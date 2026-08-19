@@ -35,6 +35,35 @@ const SMTP_HOST = () => process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = () => Number(process.env.SMTP_PORT) || 465;
 const SMTP_INSECURE = () => process.env.SMTP_INSECURE === '1';   // tests only
 
+/* Node's socket failures are frequently useless as strings. A dual-stack host
+   like smtp.gmail.com produces an AggregateError whose .message is EMPTY — it
+   keeps the real causes in .errors — so naive `e.message` logging prints
+   nothing at all and you are left staring at "FAILED:" with no reason.
+   This flattens whatever shape arrived into something a human can act on. */
+export function errText(e) {
+  if (!e) return 'unknown error';
+  const parts = [];
+  if (Array.isArray(e.errors) && e.errors.length) {
+    for (const sub of e.errors) {
+      const bit = [sub?.code, sub?.syscall, sub?.address && `${sub.address}:${sub.port ?? ''}`, sub?.message]
+        .filter(Boolean).join(' ');
+      if (bit) parts.push(bit);
+    }
+  }
+  if (e.message) parts.push(e.message);
+  if (!parts.length && e.code) parts.push(`${e.code}${e.syscall ? ' ' + e.syscall : ''}`);
+  return parts.join(' | ') || String(e) || 'unknown error';
+}
+
+/* Any failure to reach an SMTP port on a host that blocks them looks like this,
+   so say the useful thing rather than echoing a raw errno. */
+function smtpUnreachable(detail) {
+  return `Could not reach ${SMTP_HOST()}:${SMTP_PORT()} — ${detail}. `
+       + "If this is Render's free tier, that is expected: free instances block outbound SMTP "
+       + '(ports 25, 465, 587). Remove GMAIL_USER and GMAIL_APP_PASSWORD and set BREVO_API_KEY '
+       + 'instead — Brevo sends over HTTPS, which is not blocked.';
+}
+
 function connect(timeoutMs) {
   return new Promise((resolve, reject) => {
     const host = SMTP_HOST();
@@ -44,13 +73,9 @@ function connect(timeoutMs) {
       () => resolve(s));
     s.setTimeout(timeoutMs, () => {
       s.destroy();
-      reject(new Error(
-        `Timed out connecting to ${host}:${SMTP_PORT()}. If this is running on Render's free tier, `
-        + 'that is expected — free instances block outbound SMTP ports (25, 465, 587). '
-        + 'Use BREVO_API_KEY or RESEND_API_KEY instead, which send over HTTPS.'
-      ));
+      reject(new Error(smtpUnreachable('the connection timed out')));
     });
-    s.once('error', reject);
+    s.once('error', e => reject(new Error(smtpUnreachable(errText(e)))));
   });
 }
 
@@ -301,7 +326,7 @@ export async function verifyMailLogin() {
     await cmd(sock, b64(GMAIL_PASS()), [235], 15_000, true);
     return { ok: true };
   } catch (e) {
-    return { ok: false, reason: e.message };
+    return { ok: false, reason: errText(e) };
   } finally {
     sock.destroy();
   }
