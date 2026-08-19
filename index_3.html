@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#08090B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Photograph anything. Know what it's worth. List it in one tap.">
+<title>Resell.AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23D7FF3E'/><path d='M9 22V10h6a4 4 0 010 8H9m7 0l4 4' stroke='%23000' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   Resell.AI — design system
+   One accent (lime) carries every primary action. Tier colour is the only
+   other colour that ever changes, so a screen never has two things shouting.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#08090B; --bg2:#0D0F13; --card:#121419; --card2:#171A20;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --fg:#F7F8FA; --mut:#9BA1AE; --dim:#5E6472;
+  --acc:#D7FF3E; --acc-ink:#0A0C05; --acc-dim:rgba(215,255,62,.14);
+  --grn:#3DDC84; --amb:#FFC53D; --red:#FF5A4E; --blu:#4D9BFF; --vio:#A78BFA;
+  --r-sm:12px; --r:18px; --r-lg:26px; --r-xl:34px;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --nav-h:calc(66px + var(--safe-b));
+  --shadow:0 8px 30px rgba(0,0,0,.5);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior-y:none}
+body{
+  background:var(--bg); color:var(--fg);
+  font:400 16px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  letter-spacing:-.011em; overflow:hidden;
+}
+button,input,textarea,select{font:inherit;color:inherit;background:none;border:none;outline:none}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+::-webkit-scrollbar{width:0;height:0}
+
+/* ambient light — one soft lime bloom, fixed, so scrolling feels deep */
+body::before{
+  content:'';position:fixed;inset:-30% -10% auto;height:70vh;z-index:0;pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 0%,rgba(215,255,62,.10),transparent 70%);
+}
+
+/* ─────────────────────────── app shell ─────────────────────────── */
+#app{position:relative;height:100%;z-index:1}
+.screen{
+  position:absolute;inset:0;display:none;flex-direction:column;
+  padding:calc(var(--safe-t) + 8px) 20px 0;
+}
+.screen.active{display:flex;animation:in .34s var(--ease)}
+.screen.scrolls{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
+/* A screen is a flex column. Without this, any content taller than the
+   viewport gets SQUEEZED instead of scrolling — cards collapse into each
+   other and fixed-height tiles get clipped. Every child keeps its size and
+   the screen scrolls, which is the whole point of .scrolls. */
+.screen.scrolls>*{flex-shrink:0}
+.screen.has-nav{padding-bottom:calc(var(--nav-h) + 26px)}
+@keyframes in{from{opacity:0;transform:translateY(9px) scale(.995)}to{opacity:1;transform:none}}
+.rise{animation:rise .5s var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ─────────────────────────── typography ─────────────────────────── */
+h1{font-size:clamp(28px,7vw,40px);font-weight:800;letter-spacing:-.045em;line-height:1.06}
+h2.sec{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+       color:var(--dim);margin:30px 0 13px}
+.eyebrow{font-size:11.5px;font-weight:750;letter-spacing:.13em;text-transform:uppercase;color:var(--acc)}
+.sub{font-size:15px;line-height:1.6;color:var(--mut)}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.05em;font-weight:800}
+
+/* ─────────────────────────── header ─────────────────────────── */
+.hdr{display:flex;align-items:center;gap:12px;padding:8px 0 18px;flex-shrink:0}
+.hdr .ttl{font-size:17px;font-weight:700;letter-spacing:-.03em;flex:1;min-width:0;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+          background:var(--card);border:1px solid var(--line);flex-shrink:0;
+          transition:transform .18s var(--ease),background .18s}
+.icon-btn:active{transform:scale(.92);background:var(--card2)}
+.icon-btn svg{width:17px;height:17px;stroke:var(--fg);fill:none;stroke-width:2;
+              stroke-linecap:round;stroke-linejoin:round}
+
+/* ─────────────────────────── cards ─────────────────────────── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
+.card.tight{padding:15px;border-radius:var(--r)}
+.card.glow{position:relative;overflow:hidden}
+.card.glow::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(90% 70% at 50% 0%,var(--glow,rgba(215,255,62,.12)),transparent 68%)}
+.row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* ─────────────────────────── buttons ─────────────────────────── */
+.btn{width:100%;height:56px;border-radius:var(--r);font-size:16.5px;font-weight:700;
+     letter-spacing:-.02em;display:flex;align-items:center;justify-content:center;gap:9px;
+     transition:transform .16s var(--ease),opacity .16s,background .16s}
+.btn:active{transform:scale(.975)}
+.btn:disabled{opacity:.34;pointer-events:none}
+.btn-acc{background:var(--acc);color:var(--acc-ink);box-shadow:0 6px 22px rgba(215,255,62,.22)}
+.btn-solid{background:var(--fg);color:#0A0B0E}
+.btn-ghost{background:var(--card);border:1px solid var(--line2);color:var(--fg)}
+.btn-sm{height:44px;font-size:14.5px;border-radius:var(--r-sm);padding:0 18px;width:auto}
+.btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;
+         stroke-linecap:round;stroke-linejoin:round}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn{flex:1}
+
+/* ─────────────────────────── bottom nav ─────────────────────────── */
+#nav{
+  position:fixed;left:0;right:0;bottom:0;height:var(--nav-h);z-index:60;
+  padding-bottom:var(--safe-b);display:none;
+  background:rgba(10,11,14,.82);backdrop-filter:blur(26px) saturate(1.7);
+  -webkit-backdrop-filter:blur(26px) saturate(1.7);
+  border-top:1px solid var(--line);
+}
+#nav.show{display:flex}
+#nav .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          gap:4px;color:var(--dim);transition:color .2s}
+#nav .tab.on{color:var(--fg)}
+#nav .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;
+              stroke-linecap:round;stroke-linejoin:round;transition:transform .22s var(--ease)}
+#nav .tab.on svg{transform:translateY(-1px) scale(1.06)}
+#nav .tl{font-size:10.5px;font-weight:650;letter-spacing:-.01em}
+#nav .tab-scan{position:relative}
+#nav .tab-scan .fab{
+  width:52px;height:52px;border-radius:18px;background:var(--acc);display:grid;place-items:center;
+  box-shadow:0 6px 20px rgba(215,255,62,.3);transition:transform .2s var(--ease);margin-top:-12px
+}
+#nav .tab-scan:active .fab{transform:scale(.9)}
+#nav .tab-scan .fab svg{width:25px;height:25px;stroke:#0A0C05;stroke-width:2.1}
+#nav .tab-scan .tl{color:var(--mut);margin-top:1px}
+
+/* ─────────────────────────── quota meter ─────────────────────────── */
+.quota{display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:var(--r);
+       background:var(--card);border:1px solid var(--line);margin-bottom:16px}
+.quota .qbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.09);overflow:hidden}
+.quota .qfill{height:100%;border-radius:3px;background:var(--acc);transition:width .7s var(--ease)}
+.quota .qtxt{font-size:12.5px;color:var(--mut);white-space:nowrap;font-weight:600}
+.quota .qup{font-size:12.5px;font-weight:750;color:var(--acc);white-space:nowrap}
+
+/* ─────────────────────────── media tiles ─────────────────────────── */
+/* Photo sits on a designed gradient. If the photo 404s the tile still looks
+   deliberate rather than broken — see imgTile() in the script. */
+.tile{position:relative;border-radius:var(--r);overflow:hidden;background:var(--card2);
+      isolation:isolate}
+.tile .ph{position:absolute;inset:0;display:grid;place-items:center}
+.tile .ph svg{width:34%;height:34%;stroke:rgba(255,255,255,.5);fill:none;stroke-width:1.4}
+.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;
+          opacity:0;transition:opacity .55s var(--ease)}
+.tile img.ok{opacity:1}
+.tile .cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:26px 13px 12px;
+  background:linear-gradient(transparent,rgba(0,0,0,.82));
+  font-size:13.5px;font-weight:700;letter-spacing:-.02em}
+.tile .cap .s{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.62);margin-top:2px}
+
+.rail{display:flex;gap:11px;overflow-x:auto;margin:0 -20px;padding:2px 20px 4px;scroll-snap-type:x mandatory}
+.rail>*{scroll-snap-align:start;flex-shrink:0}
+.rail .tile{width:132px;height:158px}
+
+/* ─────────────────────────── home ─────────────────────────── */
+.hero-scan{
+  position:relative;border-radius:var(--r-xl);overflow:hidden;padding:26px 22px 22px;
+  background:linear-gradient(155deg,#1A1E12,#101218 62%);border:1px solid rgba(215,255,62,.2);
+}
+.hero-scan::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(70% 90% at 82% 6%,rgba(215,255,62,.2),transparent 62%)}
+.hero-scan>*{position:relative}
+.hero-scan .hl{font-size:clamp(24px,6.4vw,32px);font-weight:800;letter-spacing:-.045em;line-height:1.1;margin:12px 0 8px}
+.hero-scan .hs{font-size:14.5px;color:var(--mut);line-height:1.55;margin-bottom:20px;max-width:34ch}
+.hero-art{display:none}
+
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.stat .sv{font-size:25px;font-weight:800;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.stat .sl{font-size:11.5px;color:var(--dim);margin-top:3px;font-weight:600;
+          letter-spacing:.045em;text-transform:uppercase}
+
+.chip{display:inline-block;padding:8px 14px;border-radius:11px;background:var(--card);
+      border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--mut);white-space:nowrap}
+
+/* ─────────────────────────── empty states ─────────────────────────── */
+.empty{text-align:center;padding:44px 24px}
+.empty .ei{width:58px;height:58px;margin:0 auto 16px;border-radius:19px;display:grid;place-items:center;
+           background:var(--card);border:1px solid var(--line)}
+.empty .ei svg{width:26px;height:26px;stroke:var(--dim);fill:none;stroke-width:1.7;
+               stroke-linecap:round;stroke-linejoin:round}
+.empty .t{font-size:17px;font-weight:700;letter-spacing:-.03em}
+.empty .s{font-size:14px;color:var(--mut);margin-top:6px;line-height:1.55;max-width:30ch;
+          margin-left:auto;margin-right:auto}
+
+/* ─────────────────────────── photos ─────────────────────────── */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.photo-cell{position:relative;aspect-ratio:1;border-radius:var(--r);overflow:hidden;background:var(--card)}
+.photo-cell img{width:100%;height:100%;object-fit:cover}
+.photo-cell.primary::after{content:'MAIN';position:absolute;left:7px;top:7px;padding:3px 7px;
+  border-radius:6px;background:var(--acc);color:var(--acc-ink);font-size:9px;font-weight:800;letter-spacing:.07em}
+.photo-cell .del{position:absolute;right:6px;top:6px;width:24px;height:24px;border-radius:50%;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(8px);display:grid;place-items:center}
+.photo-cell .del svg{width:11px;height:11px;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round}
+.photo-cell.add{border:1.5px dashed var(--line2);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;background:transparent}
+.photo-cell.add svg{width:21px;height:21px;stroke:var(--dim);fill:none;stroke-width:2;stroke-linecap:round}
+.photo-cell.add .lbl{font-size:11px;color:var(--dim);font-weight:600}
+
+/* ─────────────────────────── inputs ─────────────────────────── */
+.field{margin-bottom:17px}
+.field label{display:flex;justify-content:space-between;align-items:center;
+  font-size:12.5px;font-weight:700;color:var(--mut);margin-bottom:8px;letter-spacing:.02em}
+.inp{width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+     padding:15px 16px;font-size:15.5px;transition:border-color .18s}
+.inp:focus{border-color:rgba(215,255,62,.5)}
+textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
+.cnt{font-size:11.5px;color:var(--dim);font-weight:600}
+.cnt.over{color:var(--red)}
+.price-inp{display:flex;align-items:center;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:0 16px}
+.price-inp span{font-size:20px;font-weight:800;color:var(--mut)}
+.price-inp input{flex:1;padding:15px 8px;font-size:21px;font-weight:800;letter-spacing:-.04em}
+
+/* ─────────────────────────── scan animation ─────────────────────────── */
+.scan-wrap{position:relative;width:min(74vw,290px);aspect-ratio:1;margin:0 auto 34px;
+  border-radius:var(--r-xl);overflow:hidden}
+.scan-wrap img{width:100%;height:100%;object-fit:cover;filter:saturate(.85) brightness(.72)}
+.scan-line{position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  box-shadow:0 0 22px 5px rgba(215,255,62,.5);animation:sweep 2.1s ease-in-out infinite}
+@keyframes sweep{0%,100%{top:4%}50%{top:96%}}
+.scan-grid{position:absolute;inset:0;
+  background-image:linear-gradient(rgba(215,255,62,.12) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(215,255,62,.12) 1px,transparent 1px);
+  background-size:30px 30px;mask-image:radial-gradient(circle at 50% 50%,#000 35%,transparent 76%)}
+.node{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 10px var(--acc);animation:blip 2.3s ease-in-out infinite}
+@keyframes blip{0%,100%{opacity:0;transform:scale(.3)}45%{opacity:1;transform:scale(1)}}
+
+/* ─────────────────────────── score ring ─────────────────────────── */
+.ring-wrap{position:relative;width:190px;height:190px;margin:0 auto}
+.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:12}
+.ring-fg{fill:none;stroke:var(--acc);stroke-width:12;stroke-linecap:round;
+  stroke-dasharray:534.07;stroke-dashoffset:534.07;transition:stroke-dashoffset 1.5s var(--ease),stroke .5s}
+.ring-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-mid .rv{font-size:56px;font-weight:800;letter-spacing:-.06em;line-height:1;font-variant-numeric:tabular-nums}
+.ring-mid .rl{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin-top:5px}
+
+/* tiers */
+.tier-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:12px;
+  font-size:13.5px;font-weight:800;letter-spacing:-.01em;
+  background:var(--tc-bg,var(--card));color:var(--tc,var(--fg));border:1px solid var(--tc-br,var(--line))}
+.tier-chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.3;
+               stroke-linecap:round;stroke-linejoin:round}
+.tier-scale{display:flex;gap:4px;margin-top:14px}
+.tier-scale .ts{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.09)}
+.tier-scale .ts.on{background:var(--tc,var(--acc))}
+
+/* stat grid on results */
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.metric .mn{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dim)}
+.metric .mv{font-size:27px;font-weight:800;letter-spacing:-.05em;margin:5px 0 9px;font-variant-numeric:tabular-nums}
+.metric .mt{height:4px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden}
+.metric .mf{height:100%;border-radius:2px;width:0;transition:width 1s var(--ease)}
+.metric .mnote{font-size:11.5px;color:var(--mut);margin-top:9px;line-height:1.45}
+
+/* strategy picker */
+.strat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.strat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 8px;text-align:center;
+  transition:border-color .2s,background .2s}
+.strat.on{border-color:var(--acc);background:var(--acc-dim)}
+.strat .sp{font-size:18px;font-weight:800;letter-spacing:-.04em}
+.strat .sn{font-size:11.5px;font-weight:650;margin-top:3px}
+.strat .sd{font-size:10px;color:var(--dim);margin-top:1px}
+
+/* upgrade / raise-score list */
+.raise{display:flex;align-items:center;gap:13px;padding:14px 16px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+.raise .rp{font-size:15px;font-weight:800;color:var(--acc);white-space:nowrap;font-variant-numeric:tabular-nums}
+.raise .rt{font-size:14px;font-weight:650;flex:1}
+.raise .rs{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.45}
+
+/* ─────────────────────────── plans ─────────────────────────── */
+.plan-card{position:relative;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-lg);padding:22px;margin-bottom:13px;transition:border-color .22s,transform .22s var(--ease)}
+.plan-card.pop{border-color:rgba(215,255,62,.42);background:linear-gradient(160deg,rgba(215,255,62,.07),var(--card) 55%)}
+.plan-card.cur{border-color:var(--line2)}
+.plan-card .ptag{position:absolute;top:-9px;left:22px;padding:4px 11px;border-radius:8px;
+  background:var(--acc);color:var(--acc-ink);font-size:10.5px;font-weight:800;letter-spacing:.07em}
+.plan-card .ptag.now{background:var(--card2);color:var(--mut);border:1px solid var(--line2)}
+.plan-card .pname{font-size:15px;font-weight:750;letter-spacing:-.02em}
+.plan-card .pblurb{font-size:13px;color:var(--mut);margin-top:2px}
+.plan-card .pprice{display:flex;align-items:baseline;gap:5px;margin:14px 0 4px}
+.plan-card .pprice .v{font-size:38px;font-weight:800;letter-spacing:-.055em;line-height:1}
+.plan-card .pprice .p{font-size:13.5px;color:var(--dim);font-weight:600}
+.plan-feat{display:flex;align-items:flex-start;gap:10px;margin-top:11px;font-size:14px;line-height:1.45}
+.plan-feat svg{width:16px;height:16px;flex-shrink:0;margin-top:2px;stroke:var(--acc);fill:none;
+  stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* ─────────────────────────── lists ─────────────────────────── */
+.item-row{display:flex;align-items:center;gap:13px;padding:11px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;transition:transform .16s var(--ease)}
+.item-row:active{transform:scale(.985)}
+.item-row>img,.item-row .thumb{width:54px;height:54px;border-radius:14px;object-fit:cover;
+  background:var(--card2);flex-shrink:0;display:grid;place-items:center}
+.item-row .thumb svg{width:20px;height:20px;stroke:var(--dim);fill:none;stroke-width:1.8}
+.item-row .meta{flex:1;min-width:0}
+.item-row .n{font-size:14.5px;font-weight:650;letter-spacing:-.02em;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.item-row .b{font-size:12.5px;color:var(--dim);margin-top:2px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.item-row .right{text-align:right;flex-shrink:0}
+.item-row .right .p{font-size:15.5px;font-weight:800;letter-spacing:-.03em}
+.item-row .right .s{font-size:11.5px;margin-top:2px;font-weight:650}
+
+.list-link{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;
+  border-bottom:1px solid var(--line);font-size:15px}
+.list-link:last-child{border-bottom:none}
+.list-link .lv{font-size:14px;color:var(--mut);font-weight:600;text-align:right}
+
+/* platform rows */
+.plat{display:flex;align-items:center;gap:13px;padding:14px;background:var(--card);
+  border:1.5px solid var(--line);border-radius:var(--r);margin-bottom:9px;transition:border-color .2s}
+.plat.on{border-color:var(--acc);background:var(--acc-dim)}
+.plat .pic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+  font-weight:800;font-size:18px;color:#fff;flex-shrink:0}
+.plat .pinfo{flex:1;min-width:0}
+.plat .pn{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.plat .pd{font-size:12.5px;color:var(--mut);margin-top:3px;line-height:1.4}
+.plat .pnet{text-align:right;flex-shrink:0}
+.plat .pnet .v{font-size:16px;font-weight:800;letter-spacing:-.03em}
+.plat .pnet .l{font-size:10.5px;color:var(--dim);margin-top:1px}
+.badge{display:inline-block;padding:2.5px 8px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.05em}
+.badge.auto{background:rgba(61,220,132,.16);color:var(--grn)}
+.badge.locked{background:rgba(255,255,255,.07);color:var(--dim)}
+.badge.manual{background:rgba(77,155,255,.15);color:var(--blu)}
+.badge.best{background:var(--acc);color:var(--acc-ink)}
+.badge.pro{background:rgba(215,255,62,.16);color:var(--acc)}
+
+/* defects */
+.defect{display:flex;align-items:center;gap:12px;padding:13px 15px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px}
+.sev{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sev.minor{background:var(--amb)}.sev.moderate{background:#FF9F45}.sev.major{background:var(--red)}
+.dt{font-size:14px;font-weight:650}
+.dw{font-size:12px;color:var(--dim);margin-top:2px;text-transform:capitalize}
+.di{font-size:14px;font-weight:750;color:var(--red);white-space:nowrap}
+
+/* segmented control */
+.seg{display:flex;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;margin-bottom:16px}
+.seg button{flex:1;height:36px;border-radius:10px;font-size:13px;font-weight:650;color:var(--mut);
+  transition:background .2s,color .2s}
+.seg button.on{background:var(--card2);color:var(--fg);box-shadow:0 1px 5px rgba(0,0,0,.35)}
+
+/* publish steps */
+.pub-step{display:flex;gap:13px;align-items:flex-start;padding:13px 0}
+.pub-step .st{width:20px;height:20px;border-radius:50%;border:2px solid var(--line2);flex-shrink:0;margin-top:2px;
+  display:grid;place-items:center;transition:.25s}
+.pub-step.doing .st{border-color:var(--acc);border-top-color:transparent;animation:spin .8s linear infinite}
+.pub-step.done .st{border-color:var(--grn);background:var(--grn)}
+.pub-step.done .st::after{content:'';width:5px;height:9px;border:solid #08090B;border-width:0 2px 2px 0;
+  transform:rotate(45deg) translate(-1px,-1px)}
+.pub-step.fail .st{border-color:var(--red);background:var(--red)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pub-step .pt{font-size:14.5px;font-weight:650}
+.pub-step .pm{font-size:12.5px;color:var(--mut);margin-top:2px;line-height:1.45}
+
+/* sheets, toast, errors */
+#sheetBg{position:fixed;inset:0;background:rgba(0,0,0,.66);backdrop-filter:blur(5px);z-index:90;
+  opacity:0;pointer-events:none;transition:opacity .3s}
+#sheetBg.show{opacity:1;pointer-events:auto}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:91;background:var(--bg2);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;border-top:1px solid var(--line2);
+  padding:12px 22px calc(26px + var(--safe-b));transform:translateY(101%);
+  transition:transform .42s var(--ease);max-height:88vh;overflow-y:auto}
+#sheet.show{transform:none}
+#sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--line2);margin:0 auto 18px}
+#sheet h3{font-size:21px;font-weight:800;letter-spacing:-.04em;margin-bottom:9px}
+#sheet p{font-size:14.5px;color:var(--mut);line-height:1.6;margin-bottom:16px}
+#toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 18px);transform:translate(-50%,18px);
+  background:var(--fg);color:#0A0B0E;padding:12px 20px;border-radius:13px;font-size:14px;font-weight:700;
+  z-index:120;opacity:0;pointer-events:none;transition:.28s var(--ease);white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.err{display:none;background:rgba(255,90,78,.12);border:1px solid rgba(255,90,78,.35);
+  border-radius:var(--r);padding:14px 16px;font-size:13.5px;line-height:1.55;color:#FFB0A8;margin-bottom:15px}
+.err.show{display:block;animation:rise .3s var(--ease)}
+.skel{background:linear-gradient(90deg,var(--card),var(--card2),var(--card));background-size:200% 100%;
+  border-radius:var(--r);animation:sh 1.4s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* code input */
+.code-in{display:flex;gap:9px;justify-content:center;margin:22px 0}
+.code-in input{width:46px;height:58px;text-align:center;font-size:24px;font-weight:800;
+  background:var(--card);border:1.5px solid var(--line);border-radius:15px;transition:border-color .18s}
+.code-in input:focus{border-color:var(--acc)}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DESKTOP — not a stretched phone. Sidebar nav, real columns, wider rails.
+   ══════════════════════════════════════════════════════════════════════════ */
+#side{display:none}
+@media (min-width:900px){
+  body{overflow:hidden}
+  #app{display:flex;height:100%}
+  #side{
+    display:flex;flex-direction:column;width:248px;flex-shrink:0;padding:26px 16px;
+    border-right:1px solid var(--line);background:rgba(13,15,19,.6);gap:5px
+  }
+  #side .brand{display:flex;align-items:center;gap:10px;padding:0 10px 26px;font-size:19px;
+    font-weight:800;letter-spacing:-.04em}
+  #side .brand .mk{width:31px;height:31px;border-radius:10px;background:var(--acc);display:grid;
+    place-items:center;flex-shrink:0}
+  #side .brand .mk svg{width:17px;height:17px;stroke:#0A0C05;fill:none;stroke-width:2.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  #side .snav{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;
+    font-size:14.5px;font-weight:600;color:var(--mut);transition:background .18s,color .18s}
+  #side .snav:hover{background:var(--card);color:var(--fg)}
+  #side .snav.on{background:var(--card);color:var(--fg)}
+  #side .snav svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round}
+  #side .spacer{flex:1}
+  #side .sscan{margin-top:14px;height:48px;border-radius:14px;background:var(--acc);color:var(--acc-ink);
+    font-weight:750;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
+  #side .sscan svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+  #side .squota{padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);
+    font-size:12.5px;color:var(--mut);margin-top:14px}
+
+  #main{flex:1;position:relative;min-width:0}
+  .screen{padding:34px 40px 0}
+  .screen.has-nav{padding-bottom:40px}
+  .screen>*{max-width:940px;margin-left:auto;margin-right:auto;width:100%}
+  #nav{display:none !important}
+  .hdr{padding-top:0}
+
+  h1{font-size:38px}
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .mgrid{grid-template-columns:repeat(4,1fr)}
+  .rail{margin:0;padding:2px 0 4px}
+  .rail .tile{width:176px;height:206px}
+  .photo-grid{grid-template-columns:repeat(6,1fr)}
+  .btn{max-width:340px}
+  .btn-row{max-width:none}
+  .btn-row .btn{max-width:none}
+  #toast{bottom:26px}
+  #sheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.97);
+    width:min(520px,92vw);border-radius:var(--r-xl);border:1px solid var(--line2);
+    opacity:0;transition:.34s var(--ease)}
+  #sheet.show{transform:translate(-50%,-50%);opacity:1}
+  #sheet .grab{display:none}
+
+  /* hero gets a companion collage instead of a wide empty right half */
+  .hero-scan{display:grid;grid-template-columns:1fr 300px;gap:30px;align-items:center;padding:34px}
+  .hero-art{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:104px 104px;gap:10px}
+  .hero-art .tile{width:100%;height:100%}
+  .hero-art .tile:first-child{grid-row:span 2;height:100%}
+  .hero-scan .btn{max-width:250px}
+
+  /* results become two columns: the verdict stays put while detail scrolls */
+  .res-cols{display:grid;grid-template-columns:340px 1fr;gap:26px;align-items:start}
+  .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+  .plan-card{margin-bottom:0}
+}
+@media (min-width:1300px){ .screen>*{max-width:1080px} }
+
+/* honour reduced-motion rather than animating regardless */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════ desktop sidebar ══════════════════════ -->
+<aside id="side">
+  <div class="brand">
+    <span class="mk"><svg viewBox="0 0 24 24"><path d="M6 19V5h6a4.5 4.5 0 010 9H6m8 0l5 5"/></svg></span>
+    Resell.AI
+  </div>
+  <a class="snav on" data-snav="home" onclick="tabTo('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg>Home</a>
+  <a class="snav" data-snav="inventory" id="sideInv" onclick="tabTo('inventory')" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>Inventory</a>
+  <a class="snav" data-snav="plan" onclick="tabTo('plan')">
+    <svg viewBox="0 0 24 24"><path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 16.3 6.2 19.8l1.6-6.6L2.6 8.8l6.8-.5z"/></svg>Plan</a>
+  <a class="snav" data-snav="profile" onclick="tabTo('profile')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Profile</a>
+  <button class="sscan" onclick="startScan()">
+    <svg viewBox="0 0 24 24"><path d="M3 9V6a3 3 0 013-3h3M15 3h3a3 3 0 013 3v3M21 15v3a3 3 0 01-3 3h-3M9 21H6a3 3 0 01-3-3v-3"/><circle cx="12" cy="12" r="3.2"/></svg>
+    New scan
+  </button>
+  <div class="spacer"></div>
+  <div class="squota" id="sideQuota"></div>
+</aside>
+
+<main id="main">
+
+<!-- ══════════════════════ HOME ══════════════════════ -->
+<section class="screen scrolls has-nav active" id="s-home">
+  <div class="hdr">
+    <div style="flex:1;min-width:0">
+      <div class="eyebrow" id="homeGreet">Good evening</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.045em;margin-top:3px">Ready when you are</div>
+    </div>
+    <button class="icon-btn" onclick="tabTo('profile')" aria-label="Profile">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+    </button>
+  </div>
+
+  <div id="homeQuota"></div>
+
+  <div class="hero-scan rise">
+    <div class="hero-copy">
+      <div class="eyebrow">Scan an item</div>
+      <div class="hl">What's it<br>actually worth?</div>
+      <div class="hs">Photograph anything. You get a real valuation from sold comps, an honest condition grade, and a listing written for every marketplace.</div>
+      <button class="btn btn-acc" onclick="startScan()">
+        <svg viewBox="0 0 24 24"><path d="M3 9V6a3 3 0 013-3h3M15 3h3a3 3 0 013 3v3M21 15v3a3 3 0 01-3 3h-3M9 21H6a3 3 0 01-3-3v-3"/><circle cx="12" cy="12" r="3.2"/></svg>
+        Start scanning
+      </button>
+    </div>
+    <!-- Desktop only: fills the dead space beside the copy. Built from the same
+         fallback tiles as the rail, so it survives a blocked image CDN. -->
+    <div class="hero-art" id="heroArt" aria-hidden="true"></div>
+  </div>
+
+  <div id="homeStatsWrap" style="display:none">
+    <h2 class="sec">Your numbers</h2>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="stScans">0</div><div class="sl">Scans</div></div>
+      <div class="stat"><div class="sv" id="stValue">$0</div><div class="sl">Est. value</div></div>
+      <div class="stat"><div class="sv" id="stListed">0</div><div class="sl">Listed</div></div>
+      <div class="stat"><div class="sv" id="stBest">—</div><div class="sl">Best find</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">What sells right now</h2>
+  <div class="rail" id="trendRail"></div>
+
+  <div id="homeRecentWrap" style="display:none">
+    <h2 class="sec">Recent scans</h2>
+    <div id="homeRecent"></div>
+  </div>
+
+  <div id="homeUpsell"></div>
+</section>
+
+<!-- ══════════════════════ SCAN ══════════════════════ -->
+<section class="screen scrolls" id="s-scan">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">New scan</span>
+  </div>
+
+  <h1 style="margin-bottom:8px">What are we<br>flipping?</h1>
+  <p class="sub" style="margin-bottom:22px">More angles means better pricing. Tags, labels and flaws matter most.</p>
+
+  <div class="err" id="scanErr"></div>
+
+  <div class="photo-grid" id="photoGrid"></div>
+
+  <div class="btn-row" style="margin-top:14px">
+    <button class="btn btn-ghost" onclick="pickCamera()">
+      <svg viewBox="0 0 24 24"><path d="M3 8a2 2 0 012-2h2.5l1.2-2h6.6l1.2 2H19a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.4"/></svg>
+      Camera</button>
+    <button class="btn btn-ghost" onclick="pickLibrary()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M3 16l4.5-4.5 4 4L15 12l6 6"/></svg>
+      Library</button>
+  </div>
+
+  <div class="field" style="margin-top:22px">
+    <label>Anything I should know? <span class="cnt">optional</span></label>
+    <textarea class="inp" id="scanNotes" style="min-height:88px"
+      placeholder="Where you got it, what you paid, flaws that don't photograph well…"></textarea>
+  </div>
+
+  <button class="btn btn-acc" id="analyzeBtn" onclick="runAnalysis()" disabled>
+    <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+    Analyze this item
+  </button>
+  <div style="height:34px"></div>
+  <input type="file" id="fileInput" accept="image/*" multiple hidden>
+  <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
+</section>
+
+<!-- ══════════════════════ ANALYZING ══════════════════════ -->
+<section class="screen" id="s-analyzing" style="justify-content:center;align-items:center;text-align:center">
+  <div class="scan-wrap">
+    <img id="scanImg" alt="">
+    <div class="scan-grid"></div>
+    <div id="nodes" style="position:absolute;inset:0"></div>
+    <div class="scan-line"></div>
+  </div>
+  <div class="num" id="scanPct" style="font-size:46px">0%</div>
+  <div style="width:min(66vw,250px);height:5px;border-radius:3px;background:rgba(255,255,255,.09);
+              overflow:hidden;margin:16px 0 20px">
+    <div id="scanFill" style="height:100%;width:0;background:var(--acc);border-radius:3px;transition:width .35s"></div>
+  </div>
+  <div id="scanMsg" class="sub" style="transition:opacity .28s;min-height:24px">Locking onto the item…</div>
+</section>
+
+<!-- ══════════════════════ RESULTS ══════════════════════ -->
+<section class="screen scrolls" id="s-results">
+  <div class="hdr">
+    <button class="icon-btn" onclick="tabTo('home')" aria-label="Close">
+      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <span class="ttl">Analysis</span>
+    <button class="icon-btn" onclick="shareResult()" aria-label="Share">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></button>
+  </div>
+
+  <div class="res-cols">
+    <!-- left: the verdict -->
+    <div>
+      <div class="card glow" style="text-align:center;padding:26px 20px" id="verdictCard">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 196 196">
+            <circle class="ring-bg" cx="98" cy="98" r="85"/>
+            <circle class="ring-fg" id="ring" cx="98" cy="98" r="85"/>
+          </svg>
+          <div class="ring-mid">
+            <div class="rv num" id="overallNum">0</div>
+            <div class="rl">Resell score</div>
+          </div>
+        </div>
+        <div style="margin-top:16px"><span class="tier-chip" id="tierChip"></span></div>
+        <div class="tier-scale" id="tierScale"></div>
+        <div style="font-size:14px;color:var(--mut);line-height:1.55;margin-top:15px" id="vSub"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px;display:flex;align-items:center;gap:14px">
+        <img id="resPhoto" alt="" style="width:62px;height:62px;border-radius:16px;object-fit:cover;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:750;letter-spacing:-.03em;line-height:1.25" id="pName">—</div>
+          <div style="font-size:12.5px;color:var(--dim);margin-top:3px" id="pBrand">—</div>
+        </div>
+      </div>
+
+      <div class="card glow" style="margin-top:12px;text-align:center" id="priceCard">
+        <div class="eyebrow">Estimated value</div>
+        <div class="num" id="priceVal" style="font-size:46px;margin:6px 0 4px">$0</div>
+        <div style="font-size:13px;color:var(--mut)" id="priceRange">—</div>
+        <div id="confPill" style="display:inline-flex;align-items:center;gap:7px;margin-top:13px;
+             padding:7px 13px;border-radius:10px;background:var(--card2);font-size:12px;
+             color:var(--mut);font-weight:600"></div>
+        <div class="strat-row" id="stratRow"></div>
+      </div>
+    </div>
+
+    <!-- right: the detail -->
+    <div>
+      <h2 class="sec" style="margin-top:22px">The numbers</h2>
+      <div class="mgrid" id="metrics"></div>
+
+      <div id="potentialWrap"></div>
+
+      <h2 class="sec">Condition</h2>
+      <div class="card" onclick="go('condition')" style="display:flex;align-items:center;gap:15px">
+        <div style="text-align:center;flex-shrink:0">
+          <div class="num" id="condScore" style="font-size:30px">0</div>
+          <div style="font-size:10px;color:var(--dim);letter-spacing:.09em;margin-top:1px">/100</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700" id="condGrade">—</div>
+          <div style="font-size:13px;color:var(--mut);margin-top:3px;line-height:1.45" id="condSummary">—</div>
+        </div>
+        <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--dim);fill:none;
+             stroke-width:2;flex-shrink:0"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+
+      <div style="margin-top:26px">
+        <button class="btn btn-acc" onclick="toListing()">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          Create listings
+        </button>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn btn-ghost btn-sm" style="flex:1;height:50px" onclick="saveDraft()">Save draft</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;height:50px" onclick="startScan()">Scan another</button>
+        </div>
+      </div>
+      <div style="height:30px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ CONDITION ══════════════════════ -->
+<section class="screen scrolls" id="s-condition">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Condition report</span>
+  </div>
+  <div id="condBody"></div>
+  <div style="height:30px"></div>
+</section>
+
+<!-- ══════════════════════ PLATFORMS ══════════════════════ -->
+<section class="screen scrolls" id="s-platforms">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Where to list</span>
+  </div>
+  <h1 style="margin-bottom:8px">Where should<br>this go?</h1>
+  <p class="sub" style="margin-bottom:8px">Selling at <b style="color:var(--fg)" id="platPrice">$0</b>. Amounts shown are what lands in your account after fees.</p>
+  <div style="height:14px"></div>
+  <div id="platList"></div>
+  <button class="btn btn-acc" style="margin-top:16px" onclick="go('listing')">Write the listings</button>
+  <div style="height:30px"></div>
+</section>
+
+<!-- ══════════════════════ LISTING ══════════════════════ -->
+<section class="screen scrolls" id="s-listing">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Your listing</span>
+    <button class="icon-btn" onclick="regenListing()" aria-label="Rewrite">
+      <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg></button>
+  </div>
+  <div class="seg" id="listSeg"></div>
+  <div class="err" id="listErr"></div>
+  <div id="listBody"></div>
+</section>
+
+<!-- ══════════════════════ PUBLISHING ══════════════════════ -->
+<section class="screen" id="s-publishing" style="justify-content:center">
+  <div style="width:100%;max-width:400px;margin:0 auto">
+    <h1 style="margin-bottom:26px">Publishing…</h1>
+    <div id="pubSteps"></div>
+    <button class="btn btn-ghost" id="pubCancel" style="margin-top:22px;display:none"
+            onclick="go('listing',{replace:true})">Back to listing</button>
+  </div>
+</section>
+
+<!-- ══════════════════════ SUCCESS ══════════════════════ -->
+<section class="screen" id="s-success" style="justify-content:center;align-items:center;text-align:center">
+  <div style="width:78px;height:78px;border-radius:26px;background:var(--grn);display:grid;
+              place-items:center;margin-bottom:24px;animation:rise .55s var(--ease) both">
+    <svg viewBox="0 0 24 24" style="width:36px;height:36px;stroke:#08090B;fill:none;stroke-width:3;
+         stroke-linecap:round;stroke-linejoin:round"><path d="M4 12.5l5.5 5.5L20 7"/></svg>
+  </div>
+  <h1 style="margin-bottom:10px">You're live</h1>
+  <p class="sub" id="successMsg" style="max-width:32ch;margin-bottom:26px"></p>
+  <div id="successLinks" style="width:100%;max-width:340px"></div>
+  <div style="width:100%;max-width:340px;margin-top:10px">
+    <button class="btn btn-acc" onclick="startScan()">Scan another item</button>
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="tabTo('home')">Back home</button>
+  </div>
+</section>
+
+<!-- ══════════════════════ PLAN / PRICING ══════════════════════ -->
+<section class="screen scrolls has-nav" id="s-plan">
+  <div class="hdr">
+    <button class="icon-btn" id="planBack" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Plans</span>
+  </div>
+  <h1 style="margin-bottom:8px">Scan more.<br>List instantly.</h1>
+  <p class="sub" style="margin-bottom:22px">Cancel any time. One flip usually covers a year of this.</p>
+  <div class="err" id="planErr"></div>
+  <div class="plan-grid" id="planList"></div>
+  <div id="planFoot"></div>
+  <div style="height:36px"></div>
+</section>
+
+<!-- ══════════════════════ AUTH ══════════════════════ -->
+<section class="screen scrolls" id="s-auth">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Sign in</span>
+  </div>
+  <div style="max-width:400px;width:100%;margin:0 auto">
+    <div id="authStep1">
+      <h1 style="margin-bottom:8px">Save your<br>scans</h1>
+      <p class="sub" style="margin-bottom:24px">No password. We email you a six-digit code. That's the whole process.</p>
+      <div class="err" id="authErr"></div>
+      <div class="field">
+        <label>Email</label>
+        <input class="inp" id="authEmail" type="email" inputmode="email" autocomplete="email"
+               placeholder="you@example.com" onkeydown="if(event.key==='Enter')requestCode()">
+      </div>
+      <button class="btn btn-acc" onclick="requestCode()" id="authBtn">Send me a code</button>
+      <p style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:16px;text-align:center">
+        We use your email to keep your plan and scans attached to you. Nothing else, ever.</p>
+    </div>
+
+    <div id="authStep2" style="display:none">
+      <h1 style="margin-bottom:8px">Check your<br>email</h1>
+      <p class="sub" style="margin-bottom:6px">We sent a code to <b style="color:var(--fg)" id="authTo"></b></p>
+      <div class="err" id="authErr2"></div>
+      <div class="code-in" id="codeIn">
+        <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+        <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+        <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+      </div>
+      <button class="btn btn-acc" onclick="submitCode()" id="verifyBtn">Verify</button>
+      <button class="btn btn-ghost" style="margin-top:10px" onclick="backToEmail()">Use a different email</button>
+      <div id="devCodeHint"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ INVENTORY ══════════════════════ -->
+<section class="screen scrolls has-nav" id="s-inventory">
+  <div class="hdr"><span class="ttl" style="font-size:22px;font-weight:800">Inventory</span></div>
+  <div class="seg" id="invSeg">
+    <button class="on" onclick="filterInv('all',this)">All</button>
+    <button onclick="filterInv('listed',this)">Listed</button>
+    <button onclick="filterInv('draft',this)">Drafts</button>
+    <button onclick="filterInv('sold',this)">Sold</button>
+  </div>
+  <div id="invList"></div>
+</section>
+
+<!-- ══════════════════════ ITEM ══════════════════════ -->
+<section class="screen scrolls" id="s-item">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Item</span>
+    <button class="icon-btn" onclick="deleteItem()" aria-label="Delete">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13"/></svg></button>
+  </div>
+  <div id="itemBody"></div>
+  <div style="height:30px"></div>
+</section>
+
+<!-- ══════════════════════ PROFILE ══════════════════════ -->
+<section class="screen scrolls has-nav" id="s-profile">
+  <div class="hdr"><span class="ttl" style="font-size:22px;font-weight:800">Profile</span>
+    <button class="icon-btn" onclick="go('settings')" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
+    </button>
+  </div>
+  <div id="profBody"></div>
+  <div style="height:20px"></div>
+</section>
+
+<!-- ══════════════════════ SETTINGS ══════════════════════ -->
+<section class="screen scrolls" id="s-settings">
+  <div class="hdr">
+    <button class="icon-btn" onclick="back()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="ttl">Settings</span>
+  </div>
+  <div id="setBody"></div>
+  <div style="height:30px"></div>
+</section>
+
+</main>
+</div>
+
+<!-- ══════════════════════ bottom nav ══════════════════════ -->
+<nav id="nav"></nav>
+
+<div id="sheetBg" onclick="closeSheet()"></div>
+<div id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div id="toast"></div>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Resell.AI
+   ══════════════════════════════════════════════════════════════════════════ */
+const OFFLINE_FILE = location.protocol === 'file:';
+const API = OFFLINE_FILE ? 'http://localhost:8080' : '';
+
+/* ─────────────────── storage (never throws in private mode) ─────────────── */
+const _mem = {};
+function store(k, v) {
+  const key = 'rai.' + k;
+  try {
+    if (v === undefined) { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; }
+    localStorage.setItem(key, JSON.stringify(v)); return v;
+  } catch {
+    if (v === undefined) return _mem[key] ?? null;
+    _mem[key] = v; return v;
+  }
+}
+const DEVICE_ID = (() => {
+  let d = store('deviceId');
+  if (!d) { d = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36); store('deviceId', d); }
+  return d;
+})();
+
+/* ─────────────────────────────── state ─────────────────────────────── */
+let photos = [], current = null, listings = {};
+let selectedPlatforms = ['ebay'];
+let strategy = store('strategy') || 'market';
+let tone = store('tone') || 'clean';
+let inventory = store('inventory') || [];
+let viewingItem = null, invFilter = 'all', navStack = [], scanTimers = [];
+let token = store('token') || null;
+let me = { signedIn: false, plan: 'free', scansUsed: 0, scansLimit: 1, scansLeft: 1, autoList: false };
+let PLANS = [];
+let billingReady = false;
+let pendingEmail = '';
+
+const authHeaders = (extra = {}) => {
+  const h = { 'x-device-id': DEVICE_ID, ...extra };
+  if (token) h.authorization = 'Bearer ' + token;
+  return h;
+};
+
+/* ─────────────────────────────── data ─────────────────────────────── */
+const PLATFORMS = {
+  ebay:     { name:'eBay',     color:'#0064D2', letter:'e' },
+  poshmark: { name:'Poshmark', color:'#731A3B', letter:'P' },
+  depop:    { name:'Depop',    color:'#FF2300', letter:'D' },
+  mercari:  { name:'Mercari',  color:'#5B2D8F', letter:'M' }
+};
+
+/* Six tiers. Colour flows from here into the ring, the chip and the bars, so
+   the whole results screen reads as one state rather than a pile of widgets. */
+const TIERS = [
+  { min:89, name:'Grail',  c:'#A78BFA', line:'Rare air. People set alerts for this exact item.' },
+  { min:75, name:'Elite',  c:'#4D9BFF', line:'Strong money. Photograph it properly and it moves fast.' },
+  { min:60, name:'Strong', c:'#3DDC84', line:'Solid margin. This is the bread and butter of reselling.' },
+  { min:45, name:'Decent', c:'#FFC53D', line:'Worth listing, but do not expect it to fly off the shelf.' },
+  { min:28, name:'Weak',   c:'#FF9F45', line:'Thin margins. Only worth it if you got it very cheap.' },
+  { min:0,  name:'Pass',   c:'#7A8090', line:'The resale market is not there. Your time is worth more.' }
+];
+const tierOf = n => TIERS.find(t => n >= t.min) || TIERS[TIERS.length - 1];
+
+const METRICS = [
+  {key:'resellValue',  name:'Resell Value', hi:'Sells fast and holds price.', mid:'Moves at a fair price with patience.', lo:'Hard to flip for real money.'},
+  {key:'demand',       name:'Demand',       hi:'Lots of active buyers right now.', mid:'Steady but not urgent interest.', lo:'Very few people are searching.'},
+  {key:'trendingLevel',name:'Trending',     hi:'Peaking in the market this season.', mid:'Stable — no big hype either way.', lo:'Interest has cooled off.'},
+  {key:'rarityLevel',  name:'Rarity',       hi:'Limited or hard to find.', mid:'Common but not flooded.', lo:'Mass produced and everywhere.'}
+];
+
+const SCAN_MSGS = ['Locking onto the item…','Reading brand markers and logos…','Grading surface condition…',
+  'Cross-referencing recent sold listings…','Measuring buyer demand…','Detecting rarity signals…',
+  'Checking if this is trending…','Pricing against real comps…','Compiling your report…'];
+
+/* Photography for the trending rail. Each tile is a designed gradient with an
+   SVG glyph; the photo layers on top and only becomes visible once it loads.
+   A blocked CDN or a dead URL therefore degrades to something that still looks
+   intentional. Drop your own files into public/img/<slug>.jpg to override. */
+const TRENDS = [
+  { slug:'sneakers',  name:'Jordan 4s',        sub:'Sneakers',   u:'photo-1595950653106-6c9ebd614d3a', g:'#2A2118,#12100C', i:'shoe' },
+  { slug:'carhartt',  name:'Vintage Carhartt', sub:'Workwear',   u:'photo-1544022613-e87ca75a784a', g:'#2B2312,#13110A', i:'shirt' },
+  { slug:'film-cam',  name:'Film cameras',     sub:'Electronics',u:'photo-1516035069371-29a1b244cc32', g:'#1A2028,#0D1014', i:'camera' },
+  { slug:'denim',     name:'Y2K denim',        sub:'Clothing',   u:'photo-1542272604-787c3835535d', g:'#182230,#0C1118', i:'shirt' },
+  { slug:'watches',   name:'Dive watches',     sub:'Watches',    u:'photo-1524805444758-089113d48a6d', g:'#22201A,#111010', i:'watch' },
+  { slug:'pokemon',   name:'Sealed Pokémon',   sub:'Collectibles',u:'photo-1613771404784-3a5686aa2be3', g:'#2A1A2E,#140D16', i:'cards' },
+  { slug:'patagonia', name:'Patagonia fleece', sub:'Outerwear',  u:'photo-1516762689617-e1cffcef479d', g:'#1B2A24,#0D1512', i:'shirt' },
+  { slug:'vinyl',     name:'Vinyl records',    sub:'Music',      u:'photo-1483412033650-1015ddeb83d1', g:'#26202C,#121016', i:'disc' }
+];
+
+const GLYPH = {
+  shoe:'<path d="M2 16h13l4-3 3 1v3H2zM2 16v-4l4-2 3 3h6"/>',
+  shirt:'<path d="M8 3l4 2 4-2 5 3-2 4-2-1v11H7V9L5 10 3 6z"/>',
+  camera:'<path d="M3 8a2 2 0 012-2h2.5l1.2-2h6.6l1.2 2H19a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><circle cx="12" cy="13" r="3.4"/>',
+  watch:'<circle cx="12" cy="12" r="5.5"/><path d="M9 6.5V3h6v3.5M9 17.5V21h6v-3.5M12 10v2.4l1.6 1"/>',
+  cards:'<rect x="4" y="6" width="11" height="14" rx="2"/><path d="M8 4h9a2 2 0 012 2v11"/>',
+  disc:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6"/>',
+  box:'<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>'
+};
+
+/* Layered image tile: gradient + glyph underneath, photo on top when it loads. */
+function imgTile(t, cls = '', capHtml = '') {
+  const [g1, g2] = t.g.split(',');
+  const src = t.u ? `https://images.unsplash.com/${t.u}?w=420&q=72&auto=format&fit=crop` : '';
+  return `<div class="tile ${cls}" style="background:linear-gradient(150deg,${g1},${g2})">
+    <div class="ph"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${GLYPH[t.i] || GLYPH.box}</svg></div>
+    ${src ? `<img src="${src}" alt="" loading="lazy"
+       onload="this.classList.add('ok')"
+       onerror="this.onerror=null;this.src='img/${t.slug}.jpg'">` : ''}
+    ${capHtml}</div>`;
+}
+
+/* ─────────────────────────────── helpers ─────────────────────────────── */
+const clamp = n => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+const money = n => '$' + Math.round(Number(n) || 0).toLocaleString();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const haptic = () => { try { navigator.vibrate?.(8); } catch {} };
+
+function countUp(el, to, dur = 1200, prefix = '') {
+  const t0 = performance.now();
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / dur);
+    el.textContent = prefix + Math.round(to * (1 - Math.pow(1 - p, 4))).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+function overallOf(d) {
+  return Math.round(clamp(d.resellValue)*.32 + clamp(d.demand)*.26 +
+    clamp(d.trendingLevel)*.14 + clamp(d.rarityLevel)*.14 + clamp(d.conditionScore)*.14);
+}
+function priceFor(d, s = strategy) {
+  if (s === 'quick')   return Math.round(d.quickSalePrice || d.priceLow || d.averagePrice || 0);
+  if (s === 'patient') return Math.round(d.patientPrice || d.priceHigh || d.averagePrice || 0);
+  return Math.round(d.averagePrice || 0);
+}
+function friendlyError(e) {
+  const m = String(e?.message || e || '');
+  if (/quota|used all/i.test(m)) return m;
+  if (/fetch|network|Failed to fetch/i.test(m)) return 'Could not reach the server. Check your connection and try again.';
+  return m || 'Something went wrong. Try again.';
+}
+function showErr(id, m) { const e = document.getElementById(id); if (!e) return; e.innerHTML = m; e.classList.add('show'); }
+function hideErr(id) { document.getElementById(id)?.classList.remove('show'); }
+let toastT;
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ═════════════════════════════ NAVIGATION ═════════════════════════════ */
+/* Inventory only exists once there is something in it AND an account to
+   attach it to — an empty tab on first open makes the app feel unfinished. */
+const inventoryUnlocked = () => me.signedIn && inventory.length > 0;
+
+function navItems() {
+  const items = [
+    { id:'home', label:'Home', icon:'<path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/>' }
+  ];
+  if (inventoryUnlocked()) items.push({ id:'inventory', label:'Inventory',
+    icon:'<path d="M3 7l9-4 9 4-9 4-9-4zM3 7v10l9 4 9-4V7M12 11v10"/>' });
+  items.push({ scan:true });
+  items.push({ id:'plan', label:'Plan', icon:'<path d="M12 2l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 16.3 6.2 19.8l1.6-6.6L2.6 8.8l6.8-.5z"/>' });
+  items.push({ id:'profile', label:'Profile', icon:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>' });
+  return items;
+}
+const TAB_SCREENS = ['home','inventory','plan','profile'];
+
+function renderNav() {
+  document.getElementById('nav').innerHTML = navItems().map(t => t.scan
+    ? `<button class="tab tab-scan" onclick="startScan()">
+         <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6a3 3 0 013-3h3M15 3h3a3 3 0 013 3v3M21 15v3a3 3 0 01-3 3h-3M9 21H6a3 3 0 01-3-3v-3"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+         <span class="tl">Scan</span></button>`
+    : `<button class="tab" data-tab="${t.id}" onclick="tabTo('${t.id}')">
+         <svg viewBox="0 0 24 24">${t.icon}</svg><span class="tl">${t.label}</span></button>`
+  ).join('');
+  document.getElementById('sideInv').style.display = inventoryUnlocked() ? '' : 'none';
+  syncNavActive(document.querySelector('.screen.active')?.id.replace('s-', '') || 'home');
+}
+
+function syncNavActive(id) {
+  document.querySelectorAll('#nav .tab').forEach(t => t.classList.toggle('on', t.dataset.tab === id));
+  document.querySelectorAll('#side .snav').forEach(t => t.classList.toggle('on', t.dataset.snav === id));
+}
+
+function go(id, opts = {}) {
+  const target = document.getElementById('s-' + id);
+  if (!target) return;
+  const cur = document.querySelector('.screen.active');
+
+  /* Only move screens if we are actually changing screens — but ALWAYS sync
+     the nav and re-render below. The early return that used to live here meant
+     the very first go('home') did nothing at boot (home is already active in
+     the markup), so the bottom nav never appeared. */
+  if (cur !== target) {
+    if (cur && !opts.replace) navStack.push(cur.id.replace('s-', ''));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    target.classList.add('active');
+    target.scrollTop = 0;
+  }
+
+  document.getElementById('nav').classList.toggle('show', TAB_SCREENS.includes(id));
+  syncNavActive(id);
+
+  if (id === 'home')      renderHome();
+  if (id === 'inventory') renderInventory();
+  if (id === 'profile')   renderProfile();
+  if (id === 'settings')  renderSettings();
+  if (id === 'platforms') renderPlatforms();
+  if (id === 'condition') renderCondition();
+  if (id === 'plan')      renderPlans();
+  if (id === 'listing')   initListing();
+  haptic();
+}
+function back() {
+  const prev = navStack.pop();
+  go(prev || 'home', { replace: true });
+}
+function tabTo(id) { navStack = []; go(id, { replace: true }); }
+
+/* ═════════════════════════════ ACCOUNT ═════════════════════════════ */
+async function refreshMe() {
+  try {
+    const r = await fetch(API + '/api/me', { headers: authHeaders() });
+    const j = await r.json();
+    if (j.signedIn === false && token) { token = null; store('token', null); }   // expired
+    me = j;
+  } catch { /* offline: keep whatever we had */ }
+  renderNav();
+  renderQuota();
+}
+
+function renderQuota() {
+  const pct = me.scansLimit ? Math.min(100, (me.scansUsed / me.scansLimit) * 100) : 0;
+  const planName = (me.planName || (me.plan || 'free')).replace(/^./, c => c.toUpperCase());
+  const html = `<div class="quota">
+    <span class="qtxt">${me.scansLeft} of ${me.scansLimit} scans left</span>
+    <span class="qbar"><span class="qfill" style="width:${pct}%;
+      background:${me.scansLeft === 0 ? 'var(--red)' : 'var(--acc)'}"></span></span>
+    ${me.plan === 'pro' ? `<span class="qtxt">${planName}</span>`
+      : `<span class="qup" onclick="go('plan')">Upgrade</span>`}
+  </div>`;
+  const h = document.getElementById('homeQuota');
+  if (h) h.innerHTML = html;
+
+  const s = document.getElementById('sideQuota');
+  if (s) s.innerHTML = `<div style="font-weight:700;color:var(--fg);font-size:13px;margin-bottom:7px">${planName} plan</div>
+    <div class="qbar" style="height:5px;border-radius:3px;background:rgba(255,255,255,.09);overflow:hidden;margin-bottom:8px">
+      <div style="height:100%;width:${pct}%;background:${me.scansLeft === 0 ? 'var(--red)' : 'var(--acc)'};border-radius:3px"></div></div>
+    ${me.scansLeft} of ${me.scansLimit} scans left
+    ${me.plan !== 'pro' ? `<div style="margin-top:9px"><a onclick="tabTo('plan')" style="color:var(--acc);font-weight:700;cursor:pointer">Upgrade →</a></div>` : ''}`;
+}
+
+function requireAccount(reason) {
+  pendingEmail = '';
+  document.getElementById('authStep1').style.display = '';
+  document.getElementById('authStep2').style.display = 'none';
+  hideErr('authErr'); hideErr('authErr2');
+  if (reason) showErr('authErr', reason);
+  go('auth');
+}
+
+async function requestCode() {
+  const email = document.getElementById('authEmail').value.trim();
+  hideErr('authErr');
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) return showErr('authErr', 'That does not look like an email address.');
+  const btn = document.getElementById('authBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(API + '/api/auth/request', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ email })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    pendingEmail = email;
+    document.getElementById('authTo').textContent = email;
+    document.getElementById('authStep1').style.display = 'none';
+    document.getElementById('authStep2').style.display = '';
+    document.getElementById('devCodeHint').innerHTML = j.devCode
+      ? `<div class="card tight" style="margin-top:16px;font-size:13px;color:var(--mut);line-height:1.55">
+           <b style="color:var(--amb)">No email provider configured</b><br>
+           Your code is <b style="color:var(--fg);font-size:16px">${j.devCode}</b>.
+           Set RESEND_API_KEY on the server to email these instead.</div>` : '';
+    document.querySelector('#codeIn input')?.focus();
+  } catch (e) { showErr('authErr', friendlyError(e)); }
+  finally { btn.disabled = false; btn.textContent = 'Send me a code'; }
+}
+
+function backToEmail() {
+  document.getElementById('authStep1').style.display = '';
+  document.getElementById('authStep2').style.display = 'none';
+}
+
+async function submitCode() {
+  const code = [...document.querySelectorAll('#codeIn input')].map(i => i.value).join('');
+  hideErr('authErr2');
+  if (code.length !== 6) return showErr('authErr2', 'Enter all six digits.');
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const r = await fetch(API + '/api/auth/verify', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ email: pendingEmail, code })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    token = j.token; store('token', token);
+    if (!store('joined')) store('joined', Date.now());
+    await refreshMe();
+    toast('You are signed in');
+    go(navStack.pop() || 'home', { replace: true });
+  } catch (e) {
+    showErr('authErr2', friendlyError(e));
+    document.querySelectorAll('#codeIn input').forEach(i => i.value = '');
+    document.querySelector('#codeIn input')?.focus();
+  } finally { btn.disabled = false; btn.textContent = 'Verify'; }
+}
+
+function signOut() {
+  token = null; store('token', null);
+  me = { signedIn:false, plan:'free', scansUsed:0, scansLimit:1, scansLeft:1, autoList:false };
+  renderNav(); renderQuota();
+  toast('Signed out');
+  tabTo('home');
+}
+
+/* ═════════════════════════════ PLANS ═════════════════════════════ */
+async function loadPlans() {
+  try {
+    const r = await fetch(API + '/api/plans');
+    const j = await r.json();
+    PLANS = j.plans || [];
+    billingReady = !!j.billingConfigured;
+  } catch { PLANS = []; }
+}
+
+async function renderPlans() {
+  hideErr('planErr');
+  document.getElementById('planBack').style.display = navStack.length ? '' : 'none';
+  if (!PLANS.length) await loadPlans();
+
+  document.getElementById('planList').innerHTML = PLANS.map(p => {
+    const isCur = (me.plan || 'free') === p.id;
+    return `<div class="plan-card ${p.popular ? 'pop' : ''} ${isCur ? 'cur' : ''}">
+      ${isCur ? '<span class="ptag now">Your plan</span>' : p.popular ? '<span class="ptag">Most popular</span>' : ''}
+      <div class="pname">${esc(p.name)}</div>
+      <div class="pblurb">${esc(p.blurb)}</div>
+      <div class="pprice"><span class="v">${esc(p.priceLabel)}</span>${p.price ? '<span class="p">/month</span>' : ''}</div>
+      <div>${p.features.map(f => `<div class="plan-feat">
+        <svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg><span>${esc(f)}</span></div>`).join('')}</div>
+      <div style="margin-top:18px">
+        ${isCur
+          ? `<button class="btn btn-ghost" style="height:48px" ${p.id === 'free' ? 'disabled' : 'onclick="openPortal()"'}>
+               ${p.id === 'free' ? 'Current plan' : 'Manage subscription'}</button>`
+          : p.id === 'free'
+            ? `<button class="btn btn-ghost" style="height:48px" disabled>Included</button>`
+            : `<button class="btn ${p.popular ? 'btn-acc' : 'btn-solid'}" style="height:48px"
+                 onclick="startCheckout('${p.id}')">Get ${esc(p.name)}</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('planFoot').innerHTML = `
+    <p style="font-size:12.5px;color:var(--dim);line-height:1.65;margin-top:18px;text-align:center">
+      Plans renew monthly and can be cancelled any time from this screen.
+      Scan allowances reset every 30 days from the day you subscribe.</p>
+    ${!billingReady ? `<div class="card tight" style="margin-top:14px;font-size:13px;color:var(--mut);line-height:1.55">
+      <b style="color:var(--amb)">Checkout is not switched on yet</b><br>
+      Add your Stripe keys and price IDs to the server, then these buttons go live.
+      Full walkthrough in <b style="color:var(--fg)">SETUP-BILLING.md</b>.</div>` : ''}`;
+}
+
+async function startCheckout(planId) {
+  hideErr('planErr');
+  if (!me.signedIn) { navStack.push('plan'); return requireAccount('Create an account first — your plan needs somewhere to live.'); }
+  try {
+    const r = await fetch(API + '/api/billing/checkout', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ plan: planId })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    location.href = j.url;
+  } catch (e) { showErr('planErr', friendlyError(e)); }
+}
+
+async function openPortal() {
+  try {
+    const r = await fetch(API + '/api/billing/portal', { method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    location.href = j.url;
+  } catch (e) { showErr('planErr', friendlyError(e)); }
+}
+
+/* The moment that sells the product: they have a valuation, now offer the
+   one-tap listing. Shown right after a scan rather than buried in a menu. */
+function showPaywall(kind) {
+  const starter = PLANS.find(p => p.id === 'starter') || { priceLabel:'$3.99', name:'Starter' };
+  const b = document.getElementById('sheetBody');
+  if (kind === 'listing') {
+    b.innerHTML = `
+      <h3>List it automatically for ${esc(starter.priceLabel)}/mo</h3>
+      <p>You've got the valuation. Starter publishes it straight to eBay — title, description, condition, photos, price — without you touching a form.</p>
+      <div class="card tight" style="margin-bottom:16px">
+        <div class="plan-feat"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg><span>10 scans a month</span></div>
+        <div class="plan-feat"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg><span>Automatic eBay listing, no per-listing fee</span></div>
+        <div class="plan-feat"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg><span>Inventory tracking</span></div>
+      </div>
+      <button class="btn btn-acc" onclick="closeSheet();go('plan')">See plans</button>
+      <button class="btn btn-ghost" style="margin-top:9px" onclick="closeSheet();copyCurrentListing()">Copy it and list manually</button>`;
+  } else if (kind === 'quota') {
+    b.innerHTML = `
+      <h3>That's your free scan used</h3>
+      <p>The free plan includes one scan a month. ${me.signedIn ? '' : 'Create an account and'} pick a plan to keep going — Starter is ${esc(starter.priceLabel)} a month for ten.</p>
+      <button class="btn btn-acc" onclick="closeSheet();go('plan')">See plans</button>
+      <button class="btn btn-ghost" style="margin-top:9px" onclick="closeSheet()">Not now</button>`;
+  }
+  openSheet();
+}
+
+/* ═════════════════════════════ PHOTOS ═════════════════════════════ */
+const fileEl = document.getElementById('fileInput');
+const camEl  = document.getElementById('camInput');
+[fileEl, camEl].forEach(el => el.addEventListener('change', e => {
+  [...(e.target.files || [])].slice(0, 8 - photos.length).forEach(loadImage);
+  e.target.value = '';
+}));
+const pickCamera  = () => camEl.click();
+const pickLibrary = () => fileEl.click();
+
+function loadImage(file) {
+  const fr = new FileReader();
+  fr.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1400;
+      let { width:w, height:h } = img;
+      if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      photos.push(c.toDataURL('image/jpeg', .86));
+      renderPhotoGrid(); hideErr('scanErr');
+    };
+    img.onerror = () => showErr('scanErr', 'That file could not be read as an image. Try a JPG or PNG.');
+    img.src = ev.target.result;
+  };
+  fr.readAsDataURL(file);
+}
+
+function renderPhotoGrid() {
+  const g = document.getElementById('photoGrid');
+  let html = photos.map((p, i) => `
+    <div class="photo-cell${i === 0 ? ' primary' : ''}">
+      <img src="${p}" alt="">
+      <button class="del" onclick="removePhoto(${i})" aria-label="Remove">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>`).join('');
+  if (photos.length < 8) {
+    html += `<button class="photo-cell add" onclick="pickLibrary()">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="lbl">${photos.length ? 'Add' : 'Add photo'}</span></button>`;
+  }
+  g.innerHTML = html;
+  document.getElementById('analyzeBtn').disabled = photos.length === 0;
+}
+function removePhoto(i) { photos.splice(i, 1); renderPhotoGrid(); haptic(); }
+
+function startScan() {
+  if (me.scansLeft <= 0) return showPaywall('quota');
+  photos = []; current = null; listings = {};
+  document.getElementById('scanNotes').value = '';
+  hideErr('scanErr'); renderPhotoGrid();
+  navStack = ['home'];
+  go('scan', { replace: true });
+}
+
+/* ═════════════════════════ SCAN ANIMATION ═════════════════════════ */
+function startScanAnim() {
+  const box = document.getElementById('nodes'); box.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const n = document.createElement('div');
+    n.className = 'node';
+    n.style.left = (12 + Math.random()*76) + '%';
+    n.style.top  = (12 + Math.random()*76) + '%';
+    n.style.animationDelay = (Math.random()*1.7) + 's';
+    box.appendChild(n);
+  }
+  document.getElementById('scanImg').src = photos[0];
+  const pctEl = document.getElementById('scanPct'), fillEl = document.getElementById('scanFill'), msgEl = document.getElementById('scanMsg');
+  let pct = 0, mi = 0;
+  pctEl.textContent = '0%'; fillEl.style.width = '0%'; msgEl.textContent = SCAN_MSGS[0];
+  scanTimers = [
+    setInterval(() => {
+      pct = Math.min(92, pct + (pct < 55 ? 2.2 : pct < 80 ? 1 : .3));
+      pctEl.textContent = Math.floor(pct) + '%'; fillEl.style.width = pct + '%';
+    }, 90),
+    setInterval(() => {
+      mi = (mi + 1) % SCAN_MSGS.length;
+      msgEl.style.opacity = 0;
+      setTimeout(() => { msgEl.textContent = SCAN_MSGS[mi]; msgEl.style.opacity = 1; }, 280);
+    }, 2000)
+  ];
+}
+const stopScanAnim = () => { scanTimers.forEach(clearInterval); scanTimers = []; };
+function finishScanAnim() {
+  return new Promise(res => {
+    stopScanAnim();
+    const pctEl = document.getElementById('scanPct'), fillEl = document.getElementById('scanFill');
+    document.getElementById('scanMsg').textContent = 'Done';
+    let p = parseInt(pctEl.textContent) || 0;
+    const t = setInterval(() => {
+      p = Math.min(100, p + 2);
+      pctEl.textContent = p + '%'; fillEl.style.width = p + '%';
+      if (p >= 100) { clearInterval(t); setTimeout(res, 380); }
+    }, 20);
+  });
+}
+
+/* ═════════════════════════════ ANALYSIS ═════════════════════════════ */
+async function runAnalysis() {
+  hideErr('scanErr');
+  if (!photos.length) return showErr('scanErr', 'Add at least one photo first.');
+
+  go('analyzing');
+  startScanAnim();
+  const minTime = new Promise(r => setTimeout(r, 3400));
+
+  try {
+    const req = fetch(API + '/api/analyze', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ images: photos, notes: document.getElementById('scanNotes').value.trim() })
+    }).then(async r => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { const e = new Error(j.error || `Analysis failed (${r.status})`); e.code = j.code; throw e; }
+      return j;
+    });
+
+    const [data] = await Promise.all([req, minTime]);
+    await finishScanAnim();
+
+    if (data.quota) { me = { ...me, ...data.quota }; renderQuota(); renderNav(); }
+
+    current = data;
+    current.photos = photos.slice();
+    current.id = 'it-' + Date.now();
+    current.scannedAt = Date.now();
+    current.status = 'draft';
+    renderResults(data);
+    go('results', { replace: true });
+    navStack = ['home'];
+  } catch (err) {
+    stopScanAnim();
+    go('scan', { replace: true });
+    if (err.code === 'signup') { await refreshMe(); return requireAccount('You have used your free scan. Create an account to keep going.'); }
+    if (err.code === 'quota')  { await refreshMe(); return showPaywall('quota'); }
+    showErr('scanErr', friendlyError(err));
+  }
+}
+
+/* ═════════════════════════════ RESULTS ═════════════════════════════ */
+function renderResults(d) {
+  const overall = overallOf(d);
+  const tier = tierOf(overall);
+  const cs = clamp(d.conditionScore);
+
+  document.documentElement.style.setProperty('--tc', tier.c);
+
+  document.getElementById('resPhoto').src = d.photos?.[0] || photos[0];
+  document.getElementById('pName').textContent  = d.productName || 'Unidentified item';
+  document.getElementById('pBrand').textContent =
+    [d.brand, d.size ? `Size ${d.size}` : null, d.colorway].filter(Boolean).join(' · ') || '—';
+
+  /* tier chip + six-segment scale */
+  const chip = document.getElementById('tierChip');
+  chip.textContent = tier.name;
+  chip.style.setProperty('--tc', tier.c);
+  chip.style.setProperty('--tc-bg', tier.c + '1F');
+  chip.style.setProperty('--tc-br', tier.c + '55');
+  const rank = TIERS.length - TIERS.indexOf(tier);
+  document.getElementById('tierScale').innerHTML = TIERS.map((_, i) =>
+    `<span class="ts ${i < rank ? 'on' : ''}" style="--tc:${tier.c}"></span>`).join('');
+  document.getElementById('vSub').textContent = d.verdict || tier.line;
+  document.getElementById('verdictCard').style.setProperty('--glow', tier.c + '22');
+  document.getElementById('priceCard').style.setProperty('--glow', tier.c + '18');
+
+  /* price */
+  const conf = clamp(d.priceConfidence);
+  document.getElementById('confPill').innerHTML =
+    `<span style="width:6px;height:6px;border-radius:50%;background:${conf >= 70 ? 'var(--grn)' : conf >= 40 ? 'var(--amb)' : 'var(--red)'}"></span>
+     ${conf}% price confidence${d.sellThroughDays ? ` · sells in ~${d.sellThroughDays}d` : ''}`;
+  document.getElementById('priceRange').textContent =
+    `Recent sales between ${money(d.priceLow)} and ${money(d.priceHigh)}`;
+
+  document.getElementById('stratRow').innerHTML = [
+    ['quick','Quick sale','~3 days', d.quickSalePrice || d.priceLow],
+    ['market','Market','typical', d.averagePrice],
+    ['patient','Patient','weeks', d.patientPrice || d.priceHigh]
+  ].map(([k, n, sd, p]) => `<button class="strat${strategy === k ? ' on' : ''}" onclick="setStrategy('${k}')">
+      <div class="sp">${money(p)}</div><div class="sn">${n}</div><div class="sd">${sd}</div></button>`).join('');
+
+  /* condition */
+  document.getElementById('condGrade').textContent   = d.conditionGrade || '—';
+  document.getElementById('condSummary').textContent = d.conditionSummary || '—';
+  const csEl = document.getElementById('condScore');
+  csEl.textContent = cs; csEl.style.color = tierOf(cs).c;
+
+  /* metrics */
+  const s = {}; METRICS.forEach(m => s[m.key] = clamp(d[m.key]));
+  document.getElementById('metrics').innerHTML = METRICS.map((m, i) => {
+    const v = s[m.key], c = tierOf(v).c;
+    return `<div class="metric rise" style="animation-delay:${.3 + i*.06}s">
+      <div class="mn">${m.name}</div>
+      <div class="mv" id="mv-${m.key}" style="color:${c}">0</div>
+      <div class="mt"><div class="mf" id="mf-${m.key}" style="background:${c}"></div></div>
+      <div class="mnote">${v >= 70 ? m.hi : v >= 40 ? m.mid : m.lo}</div></div>`;
+  }).join('');
+
+  renderPotential(d, overall, cs);
+
+  /* animate in */
+  const ring = document.getElementById('ring');
+  ring.style.transition = 'none'; ring.style.strokeDashoffset = 534.07;
+  document.getElementById('overallNum').textContent = '0';
+  document.getElementById('priceVal').textContent = '$0';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ring.style.transition = '';
+    ring.style.stroke = tier.c;
+    ring.style.strokeDashoffset = 534.07 * (1 - overall/100);
+    setTimeout(() => {
+      countUp(document.getElementById('overallNum'), overall, 1350);
+      countUp(document.getElementById('priceVal'), priceFor(d), 1450, '$');
+      METRICS.forEach((m, i) => setTimeout(() => {
+        const f = document.getElementById('mf-' + m.key); if (f) f.style.width = s[m.key] + '%';
+        const el = document.getElementById('mv-' + m.key); if (el) countUp(el, s[m.key], 900);
+      }, 280 + i*100));
+    }, 160);
+  }));
+}
+
+/* Potential turns the score from a verdict into a to-do list. Every point is
+   traced to a specific action, so it never reads as an arbitrary number. */
+function renderPotential(d, overall, cs) {
+  const actions = [];
+  const condGain = cs < 88 ? Math.round((95 - cs) * .14) : 0;
+  if (condGain > 0) actions.push({
+    pts: condGain, t: 'Clean and repair it',
+    s: 'Condition is 14% of the score. A proper clean is the cheapest points on this list.'
+  });
+
+  const pq = clamp(d.photoQuality?.score);
+  if (pq < 75) actions.push({
+    pts: 0, label: 'confidence',
+    t: 'Reshoot in daylight',
+    s: d.photoQuality?.advice || 'Plain background, natural light, one photo per angle. Better photos raise price confidence and cut lowball offers.'
+  });
+
+  if (!d.styleCode && /Sneakers|Clothing|Outerwear/i.test(d.category || '')) actions.push({
+    pts: 0, label: 'listing',
+    t: 'Find the style code',
+    s: 'Check the inner tag or box label. Buyers search by style code, and listings that include it get found far more often.'
+  });
+
+  (Array.isArray(d.defects) ? d.defects : []).filter(x => x.priceImpact).slice(0, 3).forEach(x => actions.push({
+    dollars: Math.abs(Number(x.priceImpact) || 0),
+    t: `Address the ${String(x.type || 'flaw').toLowerCase()}`,
+    s: `${x.where ? x.where + ' · ' : ''}${x.severity || 'minor'}. Fixing or honestly disclosing this protects the price.`
+  }));
+
+  const potential = Math.min(100, overall + condGain);
+  const el = document.getElementById('potentialWrap');
+  if (!actions.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <h2 class="sec">Potential</h2>
+    <div class="card" style="margin-bottom:12px">
+      <div class="row-between">
+        <div>
+          <div style="font-size:12px;color:var(--dim);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Could score</div>
+          <div class="num" style="font-size:34px;color:var(--acc);margin-top:2px">${potential}</div>
+        </div>
+        <div style="text-align:right;font-size:13px;color:var(--mut);line-height:1.5;max-width:20ch">
+          ${potential > overall ? `Up ${potential - overall} points if you do the work below.`
+                                : 'This item is already showing its best.'}
+        </div>
+      </div>
+    </div>
+    ${actions.map(a => `<div class="raise">
+      <div style="flex:1">
+        <div class="rt">${esc(a.t)}</div>
+        <div class="rs">${esc(a.s)}</div>
+      </div>
+      <div class="rp">${a.dollars ? '+' + money(a.dollars) : a.pts ? '+' + a.pts : (a.label === 'confidence' ? 'Trust' : 'Reach')}</div>
+    </div>`).join('')}`;
+}
+
+function setStrategy(k) {
+  strategy = k; store('strategy', k);
+  document.querySelectorAll('#stratRow .strat').forEach((b, i) =>
+    b.classList.toggle('on', ['quick','market','patient'][i] === k));
+  if (current) countUp(document.getElementById('priceVal'), priceFor(current), 500, '$');
+  haptic();
+}
+
+function toListing() { go('platforms'); }
+function saveDraft() { saveItem('draft'); toast('Saved'); setTimeout(() => tabTo('home'), 450); }
+
+/* ═════════════════════════ CONDITION REPORT ═════════════════════════ */
+function renderCondition() {
+  const d = current; if (!d) return;
+  const cs = clamp(d.conditionScore);
+  const defects = Array.isArray(d.defects) ? d.defects : [];
+  const total = defects.reduce((a, x) => a + Math.abs(Number(x.priceImpact) || 0), 0);
+  const auth = d.authenticity?.verdict;
+
+  document.getElementById('condBody').innerHTML = `
+    <div class="card" style="text-align:center;padding:24px 18px;margin-bottom:16px">
+      <div class="eyebrow">Assessed grade</div>
+      <div style="font-size:31px;font-weight:800;letter-spacing:-.045em;margin:8px 0 4px;color:${tierOf(cs).c}">${esc(d.conditionGrade || '—')}</div>
+      <div style="font-size:14px;color:var(--mut)">${cs}/100 condition score</div>
+    </div>
+    <p class="sub" style="margin-bottom:20px">${esc(d.conditionSummary || '')}</p>
+
+    <h2 class="sec">Flaws found${defects.length ? ` (${defects.length})` : ''}</h2>
+    ${defects.length ? defects.map(x => `<div class="defect">
+        <span class="sev ${esc(x.severity || 'minor')}"></span>
+        <div style="flex:1;min-width:0">
+          <div class="dt">${esc(x.type || 'Flaw')}</div>
+          <div class="dw">${esc(x.where || '')} · ${esc(x.severity || 'minor')}</div>
+        </div>
+        ${x.priceImpact ? `<span class="di">−${money(Math.abs(x.priceImpact))}</span>` : ''}
+      </div>`).join('') + (total ? `<div class="card tight row-between" style="margin-top:6px">
+        <span style="font-size:13.5px;color:var(--mut)">Estimated total impact</span>
+        <span style="font-size:17px;font-weight:800;color:var(--red)">−${money(total)}</span></div>` : '')
+      : `<div class="empty" style="padding:26px">
+          <div class="ei"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>
+          <div class="t">No visible flaws</div>
+          <div class="s">Nothing detected in these photos. Still worth a close look in person before you promise "flawless" to a buyer.</div></div>`}
+
+    <h2 class="sec">Authenticity</h2>
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:9px;color:${
+        auth === 'likely-authentic' ? 'var(--grn)' : auth === 'red-flags' ? 'var(--red)' : 'var(--mut)'}">
+        ${auth === 'likely-authentic' ? 'Likely authentic' : auth === 'red-flags' ? 'Red flags present' : 'Cannot confirm'}</div>
+      <p style="font-size:13.5px;color:var(--mut);line-height:1.55">${esc(d.authenticity?.reasoning || 'Not assessed.')}</p>
+      <p style="font-size:12px;color:var(--dim);line-height:1.55;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)">
+        A photo cannot authenticate an item. For anything above a few hundred dollars, use a platform with authentication built in.</p>
+    </div>
+
+    <h2 class="sec">Your photos</h2>
+    <div class="card">
+      <div class="row-between" style="margin-bottom:10px">
+        <span style="font-size:14.5px;font-weight:650">Photo quality</span>
+        <span style="font-size:19px;font-weight:800;color:${tierOf(clamp(d.photoQuality?.score)).c}">${clamp(d.photoQuality?.score)}</span>
+      </div>
+      <p style="font-size:13.5px;color:var(--mut);line-height:1.55">${esc(d.photoQuality?.advice || '')}</p>
+    </div>
+
+    <h2 class="sec">Item details</h2>
+    <div class="card">
+      ${[['Brand', d.brand], ['Category', d.subcategory || d.category], ['Size', d.size], ['Colorway', d.colorway],
+         ['Material', d.materials], ['Style code', d.styleCode], ['Era', d.yearEra]]
+        .filter(([, v]) => v).map(([k, v]) => `<div class="list-link"><span>${k}</span><span class="lv">${esc(v)}</span></div>`).join('')}
+    </div>`;
+}
+
+/* ═════════════════════════════ PLATFORMS ═════════════════════════════ */
+async function renderPlatforms() {
+  const d = current; if (!d) return;
+  const price = priceFor(d);
+  document.getElementById('platPrice').textContent = money(price);
+
+  let eb = { configured:false, connected:false }, dp = { configured:false };
+  try {
+    [eb, dp] = await Promise.all([
+      fetch(API + '/api/ebay/status', { headers: authHeaders() }).then(r => r.json()),
+      fetch(API + '/api/depop/status').then(r => r.json())
+    ]);
+  } catch {}
+
+  const fit = d.platformFit || {};
+  const order = Object.keys(PLATFORMS).sort((a, b) => (fit[b] || 0) - (fit[a] || 0));
+
+  document.getElementById('platList').innerHTML = order.map(k => {
+    const p = PLATFORMS[k];
+    const net = d.netPayout?.[k];
+    const netVal = net ? net[strategy === 'quick' ? 'atQuick' : strategy === 'patient' ? 'atPatient' : 'atMarket'] : price;
+    const best = d.bestPlatform === k;
+    let badge;
+    if (k === 'ebay') badge = !eb.configured ? '<span class="badge locked">Setup needed</span>'
+      : me.autoList ? `<span class="badge auto">${eb.connected ? 'Connected' : 'Auto-list'}</span>`
+                    : '<span class="badge pro">Starter</span>';
+    else if (k === 'depop') badge = dp.configured ? '<span class="badge auto">Auto-list</span>'
+                                                  : '<span class="badge locked">API invite-only</span>';
+    else badge = '<span class="badge manual">Copy &amp; go</span>';
+
+    return `<div class="plat${selectedPlatforms.includes(k) ? ' on' : ''}" onclick="togglePlatform('${k}')">
+      <div class="pic" style="background:${p.color}">${p.letter}</div>
+      <div class="pinfo">
+        <div class="pn">${p.name} ${best ? '<span class="badge best">Best fit</span>' : ''}</div>
+        <div class="pd">${badge} ${esc(net?.note || '')}</div>
+        ${best && d.platformReason ? `<div class="pd" style="margin-top:5px;color:var(--acc)">${esc(d.platformReason)}</div>` : ''}
+      </div>
+      <div class="pnet"><div class="v">${money(netVal)}</div><div class="l">you keep</div></div>
+    </div>`;
+  }).join('');
+}
+function togglePlatform(k) {
+  const i = selectedPlatforms.indexOf(k);
+  if (i >= 0) { if (selectedPlatforms.length > 1) selectedPlatforms.splice(i, 1); }
+  else selectedPlatforms.push(k);
+  renderPlatforms(); haptic();
+}
+
+/* ═════════════════════════ LISTING EDITOR ═════════════════════════ */
+let activeListPlatform = null;
+
+async function initListing() {
+  activeListPlatform = selectedPlatforms[0];
+  document.getElementById('listSeg').innerHTML = selectedPlatforms.map(k =>
+    `<button class="${k === activeListPlatform ? 'on' : ''}" onclick="switchListing('${k}')">${PLATFORMS[k].name}</button>`).join('');
+  await loadListing(activeListPlatform);
+}
+function switchListing(k) {
+  activeListPlatform = k;
+  document.querySelectorAll('#listSeg button').forEach((b, i) => b.classList.toggle('on', selectedPlatforms[i] === k));
+  loadListing(k);
+}
+
+async function loadListing(platform, force = false) {
+  hideErr('listErr');
+  const body = document.getElementById('listBody');
+  if (listings[platform] && !force) return renderListing(platform);
+
+  body.innerHTML = `<div class="skel" style="height:46px;margin-bottom:15px"></div>
+    <div class="skel" style="height:150px;margin-bottom:15px"></div>
+    <div class="skel" style="height:46px"></div>
+    <div style="text-align:center;color:var(--mut);font-size:13.5px;margin-top:18px">Writing your ${PLATFORMS[platform].name} listing…</div>`;
+  try {
+    const r = await fetch(API + '/api/listing', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ item: current, platform, tone })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Could not write the listing.');
+    j.suggestedPrice = j.suggestedPrice || priceFor(current);
+    listings[platform] = j;
+    renderListing(platform);
+  } catch (e) { body.innerHTML = ''; showErr('listErr', friendlyError(e)); }
+}
+const regenListing = () => activeListPlatform && loadListing(activeListPlatform, true);
+
+function netFromPrice(platform, price) {
+  const F = { ebay:{p:.1335,f:.40}, poshmark:{p:.20,f:0,u:2.95}, depop:{p:.0349,f:.49}, mercari:{p:.10,f:.50} }[platform];
+  if (!F) return price;
+  if (F.u && price < 15) return Math.max(0, price - F.u);
+  return Math.max(0, price - price*F.p - F.f);
+}
+
+function renderListing(platform) {
+  const l = listings[platform];
+  const limit = platform === 'depop' ? 65 : 80;
+  const canAuto = platform === 'ebay' ? me.autoList : false;
+
+  document.getElementById('listBody').innerHTML = `
+    <div class="field">
+      <label>Title <span class="cnt${l.title.length > limit ? ' over' : ''}" id="titleCnt">${l.title.length}/${limit}</span></label>
+      <input class="inp" id="lTitle" value="${esc(l.title)}" oninput="onTitleInput(${limit})">
+    </div>
+    <div class="field">
+      <label>Price <span class="cnt" id="netCnt">you keep ${money(netFromPrice(platform, l.suggestedPrice))} after fees</span></label>
+      <div class="price-inp"><span>$</span><input id="lPrice" type="number" inputmode="decimal" value="${l.suggestedPrice}" oninput="onPriceInput('${platform}')"></div>
+    </div>
+    <div class="field">
+      <label>Condition</label>
+      <input class="inp" id="lCond" value="${esc(l.conditionLabel || current.conditionGrade || '')}">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea class="inp" id="lDesc">${esc(l.description)}</textarea>
+    </div>
+    ${l.flawsDisclosure ? `<div class="field">
+      <label>Flaws disclosure <span class="cnt">protects you from returns</span></label>
+      <textarea class="inp" id="lFlaws" style="min-height:80px">${esc(l.flawsDisclosure)}</textarea>
+    </div>` : ''}
+    ${(l.tags || []).length ? `<div class="field"><label>Tags</label>
+      <div style="display:flex;flex-wrap:wrap;gap:7px">${l.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div></div>` : ''}
+    ${l.shippingTip ? `<div class="card tight" style="margin-bottom:16px;display:flex;gap:11px;font-size:13px;color:var(--mut);line-height:1.5">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;flex-shrink:0;stroke:var(--acc);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round">${GLYPH.box}</svg>
+      <span>${esc(l.shippingTip)}</span></div>` : ''}
+
+    <div class="btn-row" style="margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" style="flex:1;height:50px" onclick="copyListing('${platform}')">Copy all</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1;height:50px" onclick="saveAndHome()">Save draft</button>
+    </div>
+    <button class="btn btn-acc" onclick="publish('${platform}')">
+      ${platform === 'ebay' && !canAuto
+        ? `<svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>Publish to eBay · Starter`
+        : platform === 'ebay' ? 'Publish to eBay'
+        : platform === 'depop' ? 'Publish to Depop'
+        : `Open ${PLATFORMS[platform].name} &amp; paste`}
+    </button>
+    <div style="height:30px"></div>`;
+}
+
+function onTitleInput(limit) {
+  const v = document.getElementById('lTitle').value;
+  listings[activeListPlatform].title = v;
+  const c = document.getElementById('titleCnt');
+  c.textContent = `${v.length}/${limit}`;
+  c.classList.toggle('over', v.length > limit);
+}
+function onPriceInput(platform) {
+  const v = Number(document.getElementById('lPrice').value) || 0;
+  listings[platform].suggestedPrice = v;
+  const n = document.getElementById('netCnt');
+  if (n) n.textContent = `you keep ${money(netFromPrice(platform, v))} after fees`;
+}
+function syncListingFromForm(platform) {
+  const l = listings[platform];
+  l.title = document.getElementById('lTitle')?.value ?? l.title;
+  l.description = document.getElementById('lDesc')?.value ?? l.description;
+  l.suggestedPrice = Number(document.getElementById('lPrice')?.value) || l.suggestedPrice;
+  l.conditionLabel = document.getElementById('lCond')?.value ?? l.conditionLabel;
+  const f = document.getElementById('lFlaws'); if (f) l.flawsDisclosure = f.value;
+  return l;
+}
+function copyListing(platform) {
+  const l = syncListingFromForm(platform);
+  const txt = `${l.title}\n\n$${l.suggestedPrice}\n\n${l.description}\n\n${l.flawsDisclosure || ''}\n\n${(l.tags||[]).map(t => '#' + String(t).replace(/\s+/g,'')).join(' ')}`.trim();
+  navigator.clipboard?.writeText(txt).then(() => toast('Listing copied')).catch(() => toast('Could not copy'));
+  haptic();
+}
+function copyCurrentListing() {
+  const p = activeListPlatform || selectedPlatforms[0];
+  if (listings[p]) copyListing(p); else toast('Open a listing first');
+}
+
+/* ═════════════════════════════ PUBLISHING ═════════════════════════════ */
+async function publish(platform) {
+  const l = syncListingFromForm(platform);
+  if (!l.title.trim())     return showErr('listErr', 'Give the listing a title first.');
+  if (!l.suggestedPrice)   return showErr('listErr', 'Set a price first.');
+  if (platform === 'ebay') {
+    if (!me.signedIn) { navStack.push('listing'); return requireAccount('Automatic listing needs an account.'); }
+    if (!me.autoList) return showPaywall('listing');
+    return publishEbay(l);
+  }
+  return publishAssisted(platform, l);
+}
+
+function pubSteps(steps) {
+  document.getElementById('pubSteps').innerHTML = steps.map((s, i) =>
+    `<div class="pub-step" id="ps-${i}"><div class="st"></div><div><div class="pt">${s.t}</div><div class="pm">${s.m||''}</div></div></div>`).join('');
+}
+function pubStep(i, state, msg) {
+  const el = document.getElementById('ps-' + i); if (!el) return;
+  el.className = 'pub-step ' + state;
+  if (msg !== undefined) el.querySelector('.pm').textContent = msg;
+}
+
+async function publishEbay(l) {
+  go('publishing', { replace: true });
+  document.getElementById('pubCancel').style.display = 'none';
+  pubSteps([
+    { t:'Checking your eBay connection' },
+    { t:'Preparing photos' },
+    { t:'Creating the listing' },
+    { t:'Publishing' }
+  ]);
+  try {
+    pubStep(0, 'doing');
+    const st = await fetch(API + '/api/ebay/status', { headers: authHeaders() }).then(r => r.json());
+    if (!st.configured) { pubStep(0, 'fail', 'eBay is not set up on this server'); document.getElementById('pubCancel').style.display=''; return showSheet('ebaySetup'); }
+    if (!st.connected)  { pubStep(0, 'fail', 'Connect your eBay account to continue'); document.getElementById('pubCancel').style.display=''; return connectEbay(); }
+    pubStep(0, 'done', `Connected · ${st.env}`);
+
+    pubStep(1, 'doing');
+    const imageUrls = current.hostedImageUrls || [];
+    pubStep(1, 'done', imageUrls.length ? `${imageUrls.length} photos` : 'Text first — add photos in Seller Hub');
+
+    pubStep(2, 'doing');
+    const r = await fetch(API + '/api/ebay/publish', {
+      method: 'POST', headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ item: current, listing: l, imageUrls })
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      pubStep(2, 'fail', j.error);
+      document.getElementById('pubCancel').style.display = '';
+      if (j.code === 'upgrade') showPaywall('listing');
+      return;
+    }
+    pubStep(2, 'done', `Offer ${j.offerId}`);
+    pubStep(3, 'doing');
+    await new Promise(r => setTimeout(r, 450));
+    pubStep(3, 'done', `Listing ${j.listingId}`);
+
+    saveItem('listed', { ebay: j.url });
+    setTimeout(() => {
+      document.getElementById('successMsg').textContent = `${l.title} is live on eBay at $${l.suggestedPrice}.`;
+      document.getElementById('successLinks').innerHTML =
+        `<a href="${j.url}" target="_blank" rel="noopener"><button class="btn btn-ghost">View on eBay</button></a>`;
+      go('success', { replace: true });
+    }, 650);
+  } catch (e) {
+    pubStep(2, 'fail', friendlyError(e));
+    document.getElementById('pubCancel').style.display = '';
+  }
+}
+
+async function publishAssisted(platform, l) {
+  const txt = `${l.title}\n\n${l.description}\n\n${l.flawsDisclosure || ''}`.trim();
+  try { await navigator.clipboard.writeText(txt); } catch {}
+  saveItem('draft', {});
+  const links = {
+    poshmark:'https://poshmark.com/create-listing',
+    depop:'https://www.depop.com/products/create/',
+    mercari:'https://www.mercari.com/sell/'
+  }[platform];
+  showSheet('handoff', { platform, link: links, price: l.suggestedPrice });
+}
+
+async function connectEbay() {
+  try {
+    const r = await fetch(API + `/api/ebay/login?device=${DEVICE_ID}`);
+    const j = await r.json();
+    if (!r.ok) return showSheet('ebaySetup');
+    window.open(j.url, '_blank', 'noopener');
+    toast('Finish signing in, then come back');
+  } catch { showSheet('ebaySetup'); }
+}
+
+/* ═════════════════════════════ SHEETS ═════════════════════════════ */
+const openSheet = () => { document.getElementById('sheet').classList.add('show'); document.getElementById('sheetBg').classList.add('show'); };
+const closeSheet = () => { document.getElementById('sheet').classList.remove('show'); document.getElementById('sheetBg').classList.remove('show'); };
+
+function showSheet(kind, data = {}) {
+  const b = document.getElementById('sheetBody');
+  if (kind === 'handoff') {
+    const p = PLATFORMS[data.platform];
+    b.innerHTML = `<h3>Your ${p.name} listing is ready</h3>
+      <p>Everything is on your clipboard. ${p.name} has no public API for creating listings, so this last step is manual — about twenty seconds.</p>
+      <div class="card tight" style="margin-bottom:14px">
+        <div class="list-link"><span>Price</span><span class="lv">$${data.price}</span></div>
+        <div class="list-link"><span>Photos</span><span class="lv">${photos.length} in your library</span></div></div>
+      <a href="${data.link}" target="_blank" rel="noopener"><button class="btn btn-acc">Open ${p.name}</button></a>
+      <button class="btn btn-ghost" style="margin-top:9px" onclick="closeSheet();tabTo('home')">Done</button>`;
+  } else if (kind === 'ebaySetup') {
+    b.innerHTML = `<h3>eBay isn't configured yet</h3>
+      <p>Auto-publishing needs an eBay developer keyset on your server. It's free and takes about ten minutes.</p>
+      <div class="card tight" style="margin-bottom:14px;font-size:13.5px;line-height:1.8;color:var(--mut)">
+        1. Sign up at developer.ebay.com<br>2. Create a keyset and an RuName<br>
+        3. Paste both into <b style="color:var(--fg)">server/.env</b><br>4. Restart the server</div>
+      <button class="btn btn-ghost" onclick="closeSheet()">Got it</button>`;
+  } else if (kind === 'depopGate') {
+    b.innerHTML = `<h3>Depop's API is invite-only</h3>
+      <p>Depop runs a Selling API but it isn't open to the public. The integration is already built into your server — the moment you're approved and add your key, this starts publishing for real.</p>
+      <button class="btn btn-ghost" onclick="closeSheet()">Close</button>`;
+  } else if (kind === 'privacy') {
+    b.innerHTML = `<h3>Privacy</h3>
+      <p>Your photos go to this app's server, are forwarded once to Anthropic for analysis, and are not stored by either. Your scan history lives on this device. Your email is used only to hold your plan and nothing else.</p>
+      <button class="btn btn-ghost" onclick="closeSheet()">Close</button>`;
+  } else if (kind === 'legal') {
+    b.innerHTML = `<h3>How each marketplace works</h3>
+      <p><b style="color:var(--fg)">eBay</b> — public Sell API. Fully automated with your permission via OAuth.</p>
+      <p><b style="color:var(--fg)">Depop</b> — private partner API. Automated once approved.</p>
+      <p><b style="color:var(--fg)">Poshmark &amp; Mercari</b> — no public write API. We prepare the listing and hand off. We deliberately do not scrape these: it breaks their terms and gets sellers banned.</p>
+      <button class="btn btn-ghost" onclick="closeSheet()">Close</button>`;
+  }
+  openSheet();
+}
+
+/* ═════════════════════════════ INVENTORY ═════════════════════════════ */
+function saveItem(status = 'draft', urls = {}) {
+  if (!current) return;
+  const i = inventory.findIndex(x => x.id === current.id);
+  const rec = {
+    id: current.id, name: current.productName, brand: current.brand,
+    photo: current.photos?.[0], price: priceFor(current), score: overallOf(current),
+    grade: current.conditionGrade, status, urls, scannedAt: current.scannedAt, data: current
+  };
+  if (i >= 0) inventory[i] = rec; else inventory.unshift(rec);
+  inventory = inventory.slice(0, 200);
+  store('inventory', inventory);
+  renderNav();
+}
+function saveAndHome() {
+  if (Object.keys(listings).length) syncListingFromForm(activeListPlatform || selectedPlatforms[0]);
+  saveItem('draft'); toast('Saved to inventory');
+  setTimeout(() => tabTo('home'), 480);
+}
+function filterInv(f, btn) {
+  invFilter = f;
+  document.querySelectorAll('#invSeg button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderInventory();
+}
+function renderInventory() {
+  const list = inventory.filter(i => invFilter === 'all' || i.status === invFilter);
+  const el = document.getElementById('invList');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty">
+      <div class="ei"><svg viewBox="0 0 24 24">${GLYPH.box}</svg></div>
+      <div class="t">${invFilter === 'all' ? 'Nothing here yet' : 'No ' + invFilter + ' items'}</div>
+      <div class="s">Scan something and it will show up here.</div>
+      <button class="btn btn-ghost btn-sm" style="margin:18px auto 0" onclick="startScan()">Scan an item</button></div>`;
+    return;
+  }
+  el.innerHTML = list.map(i => `<div class="item-row" onclick="openItem('${i.id}')">
+    ${i.photo ? `<img src="${i.photo}" alt="">` : `<div class="thumb"><svg viewBox="0 0 24 24" fill="none">${GLYPH.box}</svg></div>`}
+    <div class="meta"><div class="n">${esc(i.name)}</div><div class="b">${esc(i.brand || '')} · ${esc(i.grade || '')}</div></div>
+    <div class="right"><div class="p">${money(i.price)}</div>
+      <div class="s" style="color:${i.status === 'listed' ? 'var(--grn)' : i.status === 'sold' ? 'var(--acc)' : 'var(--dim)'}">${i.status}</div></div>
+  </div>`).join('');
+}
+function openItem(id) {
+  viewingItem = inventory.find(i => i.id === id);
+  if (!viewingItem) return;
+  const d = viewingItem.data;
+  const t = tierOf(viewingItem.score);
+  document.getElementById('itemBody').innerHTML = `
+    <div style="display:flex;gap:9px;overflow-x:auto;margin:0 -20px 18px;padding:0 20px">
+      ${(d.photos || []).map(p => `<img src="${p}" style="width:118px;height:118px;border-radius:18px;object-fit:cover;flex-shrink:0">`).join('')}
+    </div>
+    <h2 style="font-size:22px;font-weight:780;letter-spacing:-.04em;line-height:1.22">${esc(d.productName)}</h2>
+    <p style="font-size:14px;color:var(--mut);margin:5px 0 16px">${esc([d.brand, d.size && 'Size ' + d.size].filter(Boolean).join(' · '))}</p>
+    <div class="stats" style="margin-bottom:16px">
+      <div class="stat"><div class="sv">${money(viewingItem.price)}</div><div class="sl">Est. value</div></div>
+      <div class="stat"><div class="sv" style="color:${t.c}">${viewingItem.score}</div><div class="sl">${t.name}</div></div>
+      <div class="stat"><div class="sv" style="font-size:17px">${esc(d.conditionGrade || '—')}</div><div class="sl">Condition</div></div>
+      <div class="stat"><div class="sv" style="font-size:17px;text-transform:capitalize">${esc(viewingItem.status)}</div><div class="sl">Status</div></div>
+    </div>
+    ${Object.keys(viewingItem.urls || {}).length ? `<h2 class="sec">Live listings</h2>
+      ${Object.entries(viewingItem.urls).map(([k, u]) => `<a href="${u}" target="_blank" rel="noopener"><div class="item-row">
+        <div class="thumb" style="background:${PLATFORMS[k].color};color:#fff;font-weight:800">${PLATFORMS[k].letter}</div>
+        <div class="meta"><div class="n">${PLATFORMS[k].name}</div><div class="b">View listing</div></div></div></a>`).join('')}` : ''}
+    <h2 class="sec">Verdict</h2>
+    <div class="card"><p style="font-size:14px;line-height:1.55;color:var(--mut)">${esc(d.verdict || '')}</p></div>
+    <div style="margin-top:20px">
+      <button class="btn btn-acc" onclick="relist('${id}')">Create listings</button>
+      <button class="btn btn-ghost" style="margin-top:9px" onclick="markSold('${id}')">Mark as ${viewingItem.status === 'sold' ? 'listed' : 'sold'}</button>
+    </div>`;
+  go('item');
+}
+function relist(id) {
+  const it = inventory.find(i => i.id === id); if (!it) return;
+  current = it.data; photos = it.data.photos || []; listings = {};
+  go('platforms');
+}
+function markSold(id) {
+  const it = inventory.find(i => i.id === id); if (!it) return;
+  it.status = it.status === 'sold' ? 'listed' : 'sold';
+  store('inventory', inventory);
+  toast(`Marked as ${it.status}`);
+  openItem(id);
+}
+function deleteItem() {
+  if (!viewingItem || !confirm('Delete this item?')) return;
+  inventory = inventory.filter(i => i.id !== viewingItem.id);
+  store('inventory', inventory);
+  renderNav(); toast('Deleted'); back();
+}
+
+/* ═════════════════════════════ HOME ═════════════════════════════ */
+function renderHome() {
+  const h = new Date().getHours();
+  document.getElementById('homeGreet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+
+  document.getElementById('trendRail').innerHTML = TRENDS.map(t =>
+    imgTile(t, '', `<span class="cap">${t.name}<span class="s">${t.sub}</span></span>`)).join('');
+
+  const art = document.getElementById('heroArt');
+  if (art && !art.childElementCount) art.innerHTML = [TRENDS[0], TRENDS[2], TRENDS[5]].map(t => imgTile(t)).join('');
+
+  const hasItems = inventory.length > 0;
+  document.getElementById('homeStatsWrap').style.display  = hasItems ? '' : 'none';
+  document.getElementById('homeRecentWrap').style.display = hasItems ? '' : 'none';
+
+  if (hasItems) {
+    const total = inventory.reduce((a, i) => a + (i.price || 0), 0);
+    const best = inventory.reduce((a, i) => (i.price || 0) > (a?.price || 0) ? i : a, null);
+    document.getElementById('stScans').textContent  = inventory.length;
+    document.getElementById('stValue').textContent  = money(total);
+    document.getElementById('stListed').textContent = inventory.filter(i => i.status === 'listed').length;
+    document.getElementById('stBest').textContent   = best ? money(best.price) : '—';
+    document.getElementById('homeRecent').innerHTML = inventory.slice(0, 3).map(i => {
+      const t = tierOf(i.score);
+      return `<div class="item-row" onclick="openItem('${i.id}')">
+        ${i.photo ? `<img src="${i.photo}" alt="">` : `<div class="thumb"><svg viewBox="0 0 24 24" fill="none">${GLYPH.box}</svg></div>`}
+        <div class="meta"><div class="n">${esc(i.name)}</div><div class="b">${esc(i.brand || '')}</div></div>
+        <div class="right"><div class="p">${money(i.price)}</div>
+          <div class="s" style="color:${t.c}">${t.name}</div></div></div>`;
+    }).join('');
+  }
+
+  /* Signed-out visitors get one nudge at the bottom, not a wall on arrival. */
+  document.getElementById('homeUpsell').innerHTML = me.signedIn ? '' : `
+    <div class="card" style="margin-top:26px;text-align:center">
+      <div style="font-size:16px;font-weight:750;letter-spacing:-.03em">Keep your scans</div>
+      <p style="font-size:13.5px;color:var(--mut);line-height:1.55;margin:7px 0 15px">
+        An account saves your history and unlocks one-tap listing. No password needed.</p>
+      <button class="btn btn-ghost btn-sm" style="margin:0 auto" onclick="requireAccount()">Create an account</button>
+    </div>`;
+}
+
+/* ═════════════════════════ PROFILE / SETTINGS ═════════════════════════ */
+function renderProfile() {
+  const total = inventory.reduce((a, i) => a + (i.price || 0), 0);
+  const avg = inventory.length ? Math.round(inventory.reduce((a, i) => a + (i.score||0), 0) / inventory.length) : 0;
+  const joined = store('joined');
+  const planName = (me.planName || me.plan || 'Free').replace(/^./, c => c.toUpperCase());
+
+  document.getElementById('profBody').innerHTML = `
+    <div class="card" style="text-align:center;padding:26px 20px;margin-bottom:14px">
+      <div style="width:64px;height:64px;border-radius:22px;background:var(--acc);margin:0 auto 14px;
+                  display:grid;place-items:center;font-size:25px;font-weight:800;color:var(--acc-ink)">
+        ${me.signedIn ? esc((me.email || '?')[0].toUpperCase()) : '?'}</div>
+      <div style="font-size:17px;font-weight:750;letter-spacing:-.03em">${me.signedIn ? esc(me.email) : 'Not signed in'}</div>
+      <div style="font-size:13px;color:var(--mut);margin-top:4px">
+        ${joined ? 'Flipping since ' + new Date(joined).toLocaleDateString('en-US',{month:'long',year:'numeric'}) : 'Welcome'}</div>
+      <div style="margin-top:14px"><span class="badge ${me.plan === 'free' ? 'locked' : 'pro'}"
+        style="font-size:11px;padding:5px 11px">${planName} plan</span></div>
+      ${me.signedIn ? '' : `<button class="btn btn-acc btn-sm" style="margin:16px auto 0" onclick="requireAccount()">Sign in</button>`}
+    </div>
+
+    ${inventory.length ? `<div class="stats" style="margin-bottom:14px">
+      <div class="stat"><div class="sv">${inventory.length}</div><div class="sl">Scans</div></div>
+      <div class="stat"><div class="sv">${money(total)}</div><div class="sl">Est. value</div></div>
+      <div class="stat"><div class="sv">${inventory.filter(i => i.status !== 'draft').length}</div><div class="sl">Listed</div></div>
+      <div class="stat"><div class="sv">${avg || '—'}</div><div class="sl">Avg score</div></div>
+    </div>` : ''}
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="row-between">
+        <div><div style="font-size:15px;font-weight:700">${planName} plan</div>
+          <div style="font-size:13px;color:var(--mut);margin-top:3px">${me.scansLeft} of ${me.scansLimit} scans left this month</div></div>
+        <button class="btn btn-acc btn-sm" onclick="tabTo('plan')">${me.plan === 'free' ? 'Upgrade' : 'Manage'}</button>
+      </div>
+    </div>
+
+    <h2 class="sec">Marketplaces</h2>
+    <div id="accountList"></div>
+
+    <h2 class="sec">More</h2>
+    <div class="card">
+      <div class="list-link" onclick="go('settings')" style="cursor:pointer"><span>Settings</span><span class="lv">›</span></div>
+      <div class="list-link" onclick="showSheet('privacy')" style="cursor:pointer"><span>Privacy</span><span class="lv">›</span></div>
+      <div class="list-link" onclick="showSheet('legal')" style="cursor:pointer"><span>How marketplaces work</span><span class="lv">›</span></div>
+      ${me.signedIn ? `<div class="list-link" onclick="signOut()" style="cursor:pointer;color:var(--red)"><span>Sign out</span><span class="lv"></span></div>` : ''}
+    </div>`;
+  renderAccounts('accountList');
+}
+
+async function renderAccounts(elId) {
+  const el = document.getElementById(elId); if (!el) return;
+  let eb = { configured:false, connected:false }, dp = { configured:false };
+  try {
+    [eb, dp] = await Promise.all([
+      fetch(API + '/api/ebay/status', { headers: authHeaders() }).then(r => r.json()),
+      fetch(API + '/api/depop/status').then(r => r.json())
+    ]);
+  } catch {}
+  el.innerHTML = `
+    <div class="plat" onclick="${eb.configured && !eb.connected ? 'connectEbay()' : "showSheet('ebaySetup')"}">
+      <div class="pic" style="background:#0064D2">e</div>
+      <div class="pinfo"><div class="pn">eBay</div><div class="pd">${
+        eb.connected ? `<span class="badge auto">Connected · ${eb.env}</span>`
+        : eb.configured ? 'Tap to connect your account' : 'Needs server setup'}</div></div></div>
+    <div class="plat" onclick="showSheet('depopGate')">
+      <div class="pic" style="background:#FF2300">D</div>
+      <div class="pinfo"><div class="pn">Depop</div><div class="pd">${dp.configured ? '<span class="badge auto">Connected</span>' : 'API access invite-only'}</div></div></div>
+    <div class="plat" onclick="showSheet('legal')">
+      <div class="pic" style="background:#731A3B">P</div>
+      <div class="pinfo"><div class="pn">Poshmark</div><div class="pd">Copy &amp; go — no public API</div></div></div>
+    <div class="plat" onclick="showSheet('legal')">
+      <div class="pic" style="background:#5B2D8F">M</div>
+      <div class="pinfo"><div class="pn">Mercari</div><div class="pd">Copy &amp; go — no public API</div></div></div>`;
+}
+
+function renderSettings() {
+  const stratName = { quick:'Quick sale', market:'Market', patient:'Patient' }[strategy];
+  document.getElementById('setBody').innerHTML = `
+    <h2 class="sec" style="margin-top:0">Pricing</h2>
+    <div class="card">
+      <div class="list-link"><span>Default strategy</span><span class="lv">${stratName}</span></div>
+      <div class="list-link"><span>Listing tone</span><span class="lv" style="text-transform:capitalize">${tone}</span></div>
+    </div>
+    <div class="seg" style="margin-top:12px">
+      ${['quick','market','patient'].map(k => `<button class="${strategy===k?'on':''}" onclick="setDefaultStrategy('${k}')">
+        ${({quick:'Quick',market:'Market',patient:'Patient'})[k]}</button>`).join('')}
+    </div>
+    <div class="seg">
+      ${['clean','hype','detailed'].map(k => `<button class="${tone===k?'on':''}" onclick="setTone('${k}')">
+        ${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}
+    </div>
+
+    <h2 class="sec">Account</h2>
+    <div class="card">
+      <div class="list-link"><span>Email</span><span class="lv">${me.signedIn ? esc(me.email) : 'Not signed in'}</span></div>
+      <div class="list-link"><span>Plan</span><span class="lv">${(me.planName || me.plan || 'Free')}</span></div>
+      <div class="list-link"><span>Server</span><span class="lv" id="setModel">checking…</span></div>
+    </div>
+
+    <h2 class="sec">Data</h2>
+    <div class="card">
+      <div class="list-link" onclick="clearAll()" style="cursor:pointer;color:var(--red)"><span>Delete all scans on this device</span><span class="lv"></span></div>
+    </div>`;
+  fetch(API + '/api/health').then(r => r.json())
+    .then(j => document.getElementById('setModel').textContent = j.keyConfigured ? j.model : 'not configured')
+    .catch(() => { const e = document.getElementById('setModel'); if (e) e.textContent = 'offline'; });
+}
+function setDefaultStrategy(k) { strategy = k; store('strategy', k); renderSettings(); haptic(); }
+function setTone(k) { tone = k; store('tone', k); listings = {}; renderSettings(); haptic(); }
+function clearAll() {
+  if (!confirm('Delete all scans on this device? This cannot be undone.')) return;
+  inventory = []; store('inventory', []);
+  renderNav(); toast('All data cleared'); tabTo('home');
+}
+
+function shareResult() {
+  if (!current) return;
+  const t = tierOf(overallOf(current));
+  const txt = `${current.productName} — ${money(priceFor(current))}\n${t.name} · ${overallOf(current)}/100\nCondition: ${current.conditionGrade}\n\nScanned with Resell.AI`;
+  if (navigator.share) navigator.share({ text: txt }).catch(() => {});
+  else { navigator.clipboard?.writeText(txt); toast('Copied to clipboard'); }
+}
+
+/* ═════════════════════════════ CODE INPUT ═════════════════════════════ */
+document.querySelectorAll('#codeIn input').forEach((inp, i, all) => {
+  inp.addEventListener('input', () => {
+    inp.value = inp.value.replace(/\D/g, '').slice(0, 1);
+    if (inp.value && all[i + 1]) all[i + 1].focus();
+    if (i === all.length - 1 && [...all].every(x => x.value)) submitCode();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value && all[i - 1]) all[i - 1].focus();
+  });
+  inp.addEventListener('paste', e => {
+    const d = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    if (!d) return;
+    e.preventDefault();
+    [...d].forEach((c, k) => { if (all[k]) all[k].value = c; });
+    if (d.length === 6) submitCode(); else all[Math.min(d.length, 5)].focus();
+  });
+});
+
+/* ═════════════════════════════ BOOT ═════════════════════════════ */
+function showServerBanner() {
+  if (document.getElementById('srvBanner')) return;
+  const d = document.createElement('div');
+  d.id = 'srvBanner';
+  d.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(var(--safe-t) + 12px);z-index:70;' +
+    'background:rgba(255,90,78,.14);border:1px solid rgba(255,90,78,.4);backdrop-filter:blur(20px);' +
+    'border-radius:16px;padding:14px 16px;font-size:13px;line-height:1.55;color:#FFB0A8';
+  d.innerHTML = '<b style="color:#fff;display:block;margin-bottom:5px">Server not running</b>' +
+    'Start it with <b style="color:#fff">node server/server.mjs</b>, then reload.' +
+    '<button onclick="this.parentNode.remove()" style="position:absolute;top:9px;right:11px;color:#FFB0A8;font-size:15px">✕</button>';
+  document.body.appendChild(d);
+}
+
+(async function boot() {
+  renderPhotoGrid();
+  renderNav();
+
+  /* Returning from Stripe: the webhook has probably already landed, but poll
+     once in case it is a second behind, so the plan shows as paid right away. */
+  const params = new URLSearchParams(location.search);
+  if (params.get('billing') === 'success') {
+    history.replaceState({}, '', location.pathname);
+    await refreshMe();
+    if (me.plan === 'free') { await new Promise(r => setTimeout(r, 2200)); await refreshMe(); }
+    toast(me.plan === 'free' ? 'Payment received — activating…' : `You're on ${me.planName}`);
+  } else if (params.get('billing') === 'cancelled') {
+    history.replaceState({}, '', location.pathname);
+  }
+
+  if (OFFLINE_FILE) showServerBanner();
+  else fetch(API + '/api/health').then(r => { if (!r.ok) throw 0; }).catch(showServerBanner);
+
+  await Promise.all([refreshMe(), loadPlans()]);
+  go('home', { replace: true });
+})();
+
+/* hardware / browser back */
+history.pushState({ r:1 }, '');
+window.addEventListener('popstate', () => { history.pushState({ r:1 }, ''); back(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+# Render blueprint.
+#
+# Everything marked `sync: false` is a secret — Render prompts you for it in
+# the dashboard and it never touches git.
+#
+# Before real customers can pay you, three of these must be set:
+#   DATABASE_URL         so accounts survive a restart
+#   STRIPE_SECRET_KEY    so cards can be charged
+#   RESEND_API_KEY       so login codes actually reach an inbox
+# See SETUP-BILLING.md for how to get each one.
+
+services:
+  - type: web
+    name: resellai
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    healthCheckPath: /api/health
+    envVars:
+      # ── AI ───────────────────────────────────────────────────────────────
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
+
+      # ── abuse limits (separate from plan limits) ─────────────────────────
+      - key: RATE_LIMIT_SCANS
+        value: "10"
+      - key: RATE_LIMIT_WINDOW_MIN
+        value: "60"
+      - key: DAILY_SCAN_CEILING
+        value: "300"
+
+      # ── sessions ─────────────────────────────────────────────────────────
+      # Long random string. Changing it signs everybody out.
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # ── database ─────────────────────────────────────────────────────────
+      # REQUIRED once you take real payments. Render's free filesystem is
+      # wiped on every restart; the server refuses to boot with live Stripe
+      # keys and no database, rather than quietly losing subscriptions.
+      - key: DATABASE_URL
+        sync: false
+
+      # ── email (login codes) ──────────────────────────────────────────────
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: "Resell.AI <onboarding@resend.dev>"
+
+      # ── billing ──────────────────────────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_STARTER
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+
+      # Used to build Stripe return URLs and the eBay redirect.
+      - key: PUBLIC_URL
+        value: https://resellai6.onrender.com
+      - key: NODE_ENV
+        value: production
+
+      # ── eBay ─────────────────────────────────────────────────────────────
+      - key: EBAY_ENV
+        value: sandbox
+      - key: TOKEN_FILE
+        value: /tmp/.tokens.json
