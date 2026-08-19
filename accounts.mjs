@@ -19,7 +19,7 @@
 
 import crypto from 'node:crypto';
 import * as store from './store.mjs';
-import { sendCode as mailCode, mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp } from './mailer.mjs';
+import { sendCode as mailCode, mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp, errText } from './mailer.mjs';
 
 /* ═════════════════════════════════ plans ═════════════════════════════════ */
 
@@ -90,7 +90,7 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 export const billingConfigured = () => !!(STRIPE_SECRET && PRICE_IDS.starter && PRICE_IDS.pro);
 export const mailConfigured    = () => mailProvider() !== 'none';
-export { mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp };
+export { mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp, errText };
 
 /* ═════════════════════════════ session tokens ════════════════════════════ */
 /* Stateless and signed: <base64url payload>.<hmac>. No session table needed,
@@ -277,8 +277,9 @@ export async function requestCode(req, res) {
   try {
     await mailCode(email, code);
   } catch (e) {
-    console.error('mail send failed:', e.message);
-    return res.status(502).json({ error: e.message });
+    const detail = errText(e);
+    console.error('mail send failed:', detail);
+    return res.status(502).json({ error: detail });
   }
 
   res.json({ ok: true, mailConfigured: true });
