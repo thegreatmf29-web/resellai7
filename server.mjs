@@ -809,6 +809,31 @@ app.get('/api/fees', (_req, res) => res.json(FEES));
    Accounts, plans and billing
    ========================================================================== */
 app.get ('/api/plans',            (_req, res) => res.json(accounts.plansPayload()));
+
+/* Answers "why didn't the email send?" without guesswork. Reports only whether
+   things are configured and what the server got back — never the credentials
+   themselves, so this is safe to open in a browser. */
+app.get('/api/auth/diagnose', async (_req, res) => {
+  const out = {
+    provider: accounts.mailProvider(),
+    from: accounts.mailFrom(),
+    gmailUserSet: !!process.env.GMAIL_USER,
+    gmailPasswordSet: !!process.env.GMAIL_APP_PASSWORD,
+    gmailPasswordLength: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').length,
+    nodeEnv: process.env.NODE_ENV || 'development'
+  };
+  // Google shows App Passwords as 16 characters; anything else is usually the
+  // account password pasted by mistake.
+  if (out.gmailPasswordSet && out.gmailPasswordLength !== 16) {
+    out.warning = `App Password is ${out.gmailPasswordLength} characters — Google's are 16. This looks like the wrong password.`;
+  }
+  if (out.provider === 'gmail') {
+    const v = await accounts.verifyMailLogin();
+    out.loginOk = v.ok;
+    if (!v.ok) out.loginError = v.reason;
+  }
+  res.json(out);
+});
 app.post('/api/auth/request',     accounts.requestCode);
 app.post('/api/auth/verify',      accounts.verifyCode);
 app.get ('/api/me',               accounts.me);
@@ -843,7 +868,7 @@ server.listen(PORT, () => {
   console.log(`  eBay: ${ebayConfigured() ? (EBAY_SANDBOX ? 'sandbox' : 'PRODUCTION') : 'not configured'}`);
   console.log(`  Depop: ${process.env.DEPOP_API_KEY ? 'enabled' : 'awaiting partner approval'}`);
   console.log(`  Billing: ${accounts.billingConfigured() ? (live ? 'LIVE' : 'test mode') : 'not configured'}`);
-  console.log(`  Email: ${accounts.mailConfigured() ? 'Resend' : 'console only (codes print here)'}`);
+  console.log(`  Email: ${accounts.mailConfigured() ? accounts.mailProvider() + ' (' + accounts.mailFrom() + ')' : 'console only (codes print here)'}`);
   console.log(`  Storage: ${store.DRIVER}`);
 
   /* The one combination that quietly loses money: real cards being charged
@@ -855,7 +880,14 @@ server.listen(PORT, () => {
     process.exit(1);
   }
   if (!accounts.mailConfigured()) {
-    console.log('\n  · No RESEND_API_KEY set, so login codes print in this terminal');
-    console.log('    instead of being emailed. Fine for testing, not for real users.\n');
+    console.log('\n  · No mail provider set, so login codes print in this terminal');
+    console.log('    instead of being emailed. Set GMAIL_USER and GMAIL_APP_PASSWORD.');
+    console.log('    In production, sign-in returns a clear error rather than');
+    console.log('    silently failing. See SETUP-BILLING.md.\n');
+  } else {
+    accounts.verifyMailLogin().then(v => {
+      if (v.ok) console.log('  ✓ Mail login verified\n');
+      else console.error(`\n  ✗ Mail login FAILED: ${v.reason}\n    Check /api/auth/diagnose\n`);
+    }).catch(() => {});
   }
 });
