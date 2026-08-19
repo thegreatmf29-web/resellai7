@@ -6,7 +6,7 @@
 # Before real customers can pay you, three of these must be set:
 #   DATABASE_URL         so accounts survive a restart
 #   STRIPE_SECRET_KEY    so cards can be charged
-#   RESEND_API_KEY       so login codes actually reach an inbox
+#   BREVO_API_KEY + MAIL_FROM         so login codes reach an inbox
 # See SETUP-BILLING.md for how to get each one.
 
 services:
@@ -46,10 +46,20 @@ services:
         sync: false
 
       # ── email (login codes) ──────────────────────────────────────────────
-      - key: RESEND_API_KEY
+      # Render's FREE tier blocks outbound SMTP (25/465/587), so Gmail SMTP
+      # cannot work here. Brevo and Resend send over HTTPS and do work.
+      # Without one of these, sign-in returns a clear error and nobody can
+      # register.
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
-        value: "Resell.AI <onboarding@resend.dev>"
+        sync: false            # must match a sender verified in Brevo
+
+      # Only usable on a PAID instance (free blocks SMTP ports).
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
 
       # ── billing ──────────────────────────────────────────────────────────
       - key: STRIPE_SECRET_KEY
