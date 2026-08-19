@@ -52,7 +52,7 @@ body::before{
 #app{position:relative;height:100%;z-index:1}
 .screen{
   position:absolute;inset:0;display:none;flex-direction:column;
-  padding:calc(var(--safe-t) + 8px) 20px 0;
+  padding:calc(var(--safe-t) + 52px) 20px 0;
 }
 .screen.active{display:flex;animation:in .34s var(--ease)}
 .screen.scrolls{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
@@ -74,7 +74,55 @@ h2.sec{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:upperc
 .sub{font-size:15px;line-height:1.6;color:var(--mut)}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-.05em;font-weight:800}
 
-/* ─────────────────────────── header ─────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   APP BAR
+   One header for every screen. Left slot is the logo on top-level screens and
+   a back chevron on sub-screens; the compact title fades in only once you
+   scroll past the large title, so the name of the page is never shown twice
+   at the same time. This is the pattern iOS and most Google apps use, and it
+   is what makes a set of screens feel like one app rather than twelve pages.
+   ══════════════════════════════════════════════════════════════════════════ */
+#appbar{
+  position:absolute;top:0;left:0;right:0;z-index:50;height:calc(var(--safe-t) + 52px);
+  padding:var(--safe-t) 12px 0 12px;display:flex;align-items:center;gap:8px;
+  background:rgba(8,9,11,0);backdrop-filter:blur(0px);
+  transition:background .26s ease,backdrop-filter .26s ease,border-color .26s ease;
+  border-bottom:1px solid transparent;pointer-events:none;
+}
+#appbar>*{pointer-events:auto}
+#appbar.scrolled{
+  background:rgba(8,9,11,.76);backdrop-filter:blur(22px) saturate(1.6);
+  -webkit-backdrop-filter:blur(22px) saturate(1.6);border-bottom-color:var(--line);
+}
+#appbar .ab-left,#appbar .ab-right{display:flex;align-items:center;gap:6px;flex:0 0 auto;min-width:44px}
+#appbar .ab-right{justify-content:flex-end}
+#appbar .ab-mid{flex:1;min-width:0;display:flex;align-items:center;justify-content:center}
+
+/* compact title — only visible once the large title scrolls away */
+#appbar .ab-title{
+  font-size:16px;font-weight:700;letter-spacing:-.03em;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;
+  opacity:0;transform:translateY(7px);transition:opacity .24s ease,transform .24s ease;
+}
+#appbar.scrolled .ab-title{opacity:1;transform:none}
+/* sub-screens have no large title, so their compact title is always shown */
+#appbar.always-title .ab-title{opacity:1;transform:none}
+
+/* brand lockup */
+.brandmark{display:flex;align-items:center;gap:9px;padding:4px 2px}
+.brandmark .mk{width:29px;height:29px;border-radius:9px;background:var(--acc);
+  display:grid;place-items:center;flex-shrink:0}
+.brandmark .mk svg{width:16px;height:16px;stroke:#0A0C05;fill:none;stroke-width:2.7;
+  stroke-linecap:round;stroke-linejoin:round}
+.brandmark .wm{font-size:16.5px;font-weight:800;letter-spacing:-.04em}
+
+/* large title, sitting in the content below the bar */
+.page-head{padding:6px 0 18px}
+.page-head .eyebrow{display:block;margin-bottom:7px}
+.page-head h1{font-size:clamp(30px,8vw,38px);font-weight:800;letter-spacing:-.048em;line-height:1.05}
+.page-head .lead{font-size:15.5px;line-height:1.55;color:var(--mut);margin-top:9px;max-width:38ch}
+
+/* kept for the few inline headers that are not page-level */
 .hdr{display:flex;align-items:center;gap:12px;padding:8px 0 18px;flex-shrink:0}
 .hdr .ttl{font-size:17px;font-weight:700;letter-spacing:-.03em;flex:1;min-width:0;
           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -427,7 +475,12 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
     font-size:12.5px;color:var(--mut);margin-top:14px}
 
   #main{flex:1;position:relative;min-width:0}
-  .screen{padding:34px 40px 0}
+  .screen{padding:calc(52px + 18px) 40px 0}
+  #appbar{padding-left:40px;padding-right:40px;height:56px}
+  #appbar .ab-mid{justify-content:flex-start}
+  #appbar .ab-title{text-align:left}
+  #appbar .brandmark{display:none}          /* the sidebar already shows it */
+  .page-head h1{font-size:38px}
   .screen.has-nav{padding-bottom:40px}
   .screen>*{max-width:940px;margin-left:auto;margin-right:auto;width:100%}
   #nav{display:none !important}
@@ -496,16 +549,14 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <main id="main">
 
+<header id="appbar"></header>
+
 <!-- ══════════════════════ HOME ══════════════════════ -->
 <section class="screen scrolls has-nav active" id="s-home">
-  <div class="hdr">
-    <div style="flex:1;min-width:0">
-      <div class="eyebrow" id="homeGreet">Good evening</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.045em;margin-top:3px">Ready when you are</div>
-    </div>
-    <button class="icon-btn" onclick="tabTo('profile')" aria-label="Profile">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
-    </button>
+
+  <div class="page-head">
+    <span class="eyebrow" id="homeGreet">Good evening</span>
+    <h1>Ready when<br>you are</h1>
   </div>
 
   <div id="homeQuota"></div>
@@ -548,14 +599,11 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ SCAN ══════════════════════ -->
 <section class="screen scrolls" id="s-scan">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">New scan</span>
-  </div>
 
-  <h1 style="margin-bottom:8px">What are we<br>flipping?</h1>
-  <p class="sub" style="margin-bottom:22px">More angles means better pricing. Tags, labels and flaws matter most.</p>
+  <div class="page-head">
+    <h1>What are we<br>flipping?</h1>
+    <p class="lead">More angles means better pricing. Tags, labels and flaws matter most.</p>
+  </div>
 
   <div class="err" id="scanErr"></div>
 
@@ -603,13 +651,6 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ RESULTS ══════════════════════ -->
 <section class="screen scrolls" id="s-results">
-  <div class="hdr">
-    <button class="icon-btn" onclick="tabTo('home')" aria-label="Close">
-      <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-    <span class="ttl">Analysis</span>
-    <button class="icon-btn" onclick="shareResult()" aria-label="Share">
-      <svg viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/></svg></button>
-  </div>
 
   <div class="res-cols">
     <!-- left: the verdict -->
@@ -687,25 +728,17 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ CONDITION ══════════════════════ -->
 <section class="screen scrolls" id="s-condition">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Condition report</span>
-  </div>
+  <div class="page-head"><h1>Condition<br>report</h1></div>
   <div id="condBody"></div>
   <div style="height:30px"></div>
 </section>
 
 <!-- ══════════════════════ PLATFORMS ══════════════════════ -->
 <section class="screen scrolls" id="s-platforms">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Where to list</span>
+  <div class="page-head">
+    <h1>Where should<br>this go?</h1>
+    <p class="lead">Selling at <b style="color:var(--fg)" id="platPrice">$0</b>. Amounts shown are what lands in your account after fees.</p>
   </div>
-  <h1 style="margin-bottom:8px">Where should<br>this go?</h1>
-  <p class="sub" style="margin-bottom:8px">Selling at <b style="color:var(--fg)" id="platPrice">$0</b>. Amounts shown are what lands in your account after fees.</p>
-  <div style="height:14px"></div>
   <div id="platList"></div>
   <button class="btn btn-acc" style="margin-top:16px" onclick="go('listing')">Write the listings</button>
   <div style="height:30px"></div>
@@ -713,13 +746,6 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ LISTING ══════════════════════ -->
 <section class="screen scrolls" id="s-listing">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Your listing</span>
-    <button class="icon-btn" onclick="regenListing()" aria-label="Rewrite">
-      <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg></button>
-  </div>
   <div class="seg" id="listSeg"></div>
   <div class="err" id="listErr"></div>
   <div id="listBody"></div>
@@ -753,13 +779,11 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ PLAN / PRICING ══════════════════════ -->
 <section class="screen scrolls has-nav" id="s-plan">
-  <div class="hdr">
-    <button class="icon-btn" id="planBack" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Plans</span>
+  <div class="page-head">
+    <span class="eyebrow">Plans</span>
+    <h1>Scan more.<br>List instantly.</h1>
+    <p class="lead">Cancel any time. One flip usually covers a year of this.</p>
   </div>
-  <h1 style="margin-bottom:8px">Scan more.<br>List instantly.</h1>
-  <p class="sub" style="margin-bottom:22px">Cancel any time. One flip usually covers a year of this.</p>
   <div class="err" id="planErr"></div>
   <div class="plan-grid" id="planList"></div>
   <div id="planFoot"></div>
@@ -768,15 +792,12 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ AUTH ══════════════════════ -->
 <section class="screen scrolls" id="s-auth">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Sign in</span>
-  </div>
   <div style="max-width:400px;width:100%;margin:0 auto">
     <div id="authStep1">
-      <h1 style="margin-bottom:8px">Save your<br>scans</h1>
-      <p class="sub" style="margin-bottom:24px">No password. We email you a six-digit code. That's the whole process.</p>
+      <div class="page-head">
+        <h1>Save your<br>scans</h1>
+        <p class="lead">No password. We email you a six-digit code. That's the whole process.</p>
+      </div>
       <div class="err" id="authErr"></div>
       <div class="field">
         <label>Email</label>
@@ -789,8 +810,10 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
     </div>
 
     <div id="authStep2" style="display:none">
-      <h1 style="margin-bottom:8px">Check your<br>email</h1>
-      <p class="sub" style="margin-bottom:6px">We sent a code to <b style="color:var(--fg)" id="authTo"></b></p>
+      <div class="page-head">
+        <h1>Check your<br>email</h1>
+        <p class="lead">We sent a code to <b style="color:var(--fg)" id="authTo"></b></p>
+      </div>
       <div class="err" id="authErr2"></div>
       <div class="code-in" id="codeIn">
         <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
@@ -806,7 +829,7 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ INVENTORY ══════════════════════ -->
 <section class="screen scrolls has-nav" id="s-inventory">
-  <div class="hdr"><span class="ttl" style="font-size:22px;font-weight:800">Inventory</span></div>
+  <div class="page-head"><h1>Inventory</h1></div>
   <div class="seg" id="invSeg">
     <button class="on" onclick="filterInv('all',this)">All</button>
     <button onclick="filterInv('listed',this)">Listed</button>
@@ -818,35 +841,20 @@ textarea.inp{min-height:120px;resize:vertical;line-height:1.6}
 
 <!-- ══════════════════════ ITEM ══════════════════════ -->
 <section class="screen scrolls" id="s-item">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Item</span>
-    <button class="icon-btn" onclick="deleteItem()" aria-label="Delete">
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13"/></svg></button>
-  </div>
   <div id="itemBody"></div>
   <div style="height:30px"></div>
 </section>
 
 <!-- ══════════════════════ PROFILE ══════════════════════ -->
 <section class="screen scrolls has-nav" id="s-profile">
-  <div class="hdr"><span class="ttl" style="font-size:22px;font-weight:800">Profile</span>
-    <button class="icon-btn" onclick="go('settings')" aria-label="Settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-    </button>
-  </div>
+  <div class="page-head"><h1>Profile</h1></div>
   <div id="profBody"></div>
   <div style="height:20px"></div>
 </section>
 
 <!-- ══════════════════════ SETTINGS ══════════════════════ -->
 <section class="screen scrolls" id="s-settings">
-  <div class="hdr">
-    <button class="icon-btn" onclick="back()" aria-label="Back">
-      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="ttl">Settings</span>
-  </div>
+  <div class="page-head"><h1>Settings</h1></div>
   <div id="setBody"></div>
   <div style="height:30px"></div>
 </section>
@@ -1028,6 +1036,91 @@ function navItems() {
 }
 const TAB_SCREENS = ['home','inventory','plan','profile'];
 
+/* ═══════════════════════════════ APP BAR ═══════════════════════════════
+   Every screen declares what its header holds. Top-level screens show the
+   brand; sub-screens show a back chevron and keep their title visible at all
+   times (they have no large title to collapse from). Defined in one place so
+   headers cannot drift apart screen by screen, which is exactly what made the
+   old per-screen markup feel like twelve separate pages.
+   ═══════════════════════════════════════════════════════════════════════ */
+const ICON = {
+  back:  '<path d="M15 18l-6-6 6-6"/>',
+  close: '<path d="M18 6L6 18M6 6l12 12"/>',
+  user:  '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+  share: '<path d="M12 16V4M8 8l4-4 4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3"/>',
+  gear:  '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/>',
+  trash: '<path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13"/>',
+  redo:  '<path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/>'
+};
+
+const BAR = {
+  home:      { title:'Home',       brand:true,  right:[['user','tabTo(\'profile\')','Profile']] },
+  inventory: { title:'Inventory',  brand:true },
+  plan:      { title:'Plans',      brand:true },
+  profile:   { title:'Profile',    brand:true,  right:[['gear','go(\'settings\')','Settings']] },
+  scan:      { title:'New scan',   back:true },
+  results:   { title:'Analysis',   back:'tabTo(\'home\')', backIcon:'close', pin:true,
+               right:[['share','shareResult()','Share']] },
+  condition: { title:'Condition report', back:true },
+  platforms: { title:'Where to list',   back:true },
+  listing:   { title:'Your listing',    back:true, pin:true,
+               right:[['redo','regenListing()','Rewrite']] },
+  item:      { title:'Item',       back:true, pin:true, right:[['trash','deleteItem()','Delete']] },
+  settings:  { title:'Settings',   back:true },
+  auth:      { title:'Sign in',    back:true },
+  analyzing: { hide:true },
+  publishing:{ hide:true },
+  success:   { hide:true }
+};
+
+const iconBtn = (name, action, label) =>
+  `<button class="icon-btn" onclick="${action}" aria-label="${label}">
+     <svg viewBox="0 0 24 24">${ICON[name]}</svg></button>`;
+
+function renderAppbar(id) {
+  const bar = document.getElementById('appbar');
+  const cfg = BAR[id] || { title: '' };
+  if (cfg.hide) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+
+  const left = cfg.back
+    ? iconBtn(cfg.backIcon || 'back', typeof cfg.back === 'string' ? cfg.back : 'back()', 'Back')
+    : cfg.brand
+      ? `<span class="brandmark"><span class="mk"><svg viewBox="0 0 24 24" fill="none"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M6 19V5h6a4.5 4.5 0 010 9H6m8 0l5 5"/></svg></span>
+         <span class="wm">Resell.AI</span></span>`
+      : '';
+
+  /* A top-level screen shows the brand and nothing else — "Resell.AI · Home"
+     is redundant, and the two compete for the same optical centre. Sub-screens
+     drop the brand and show the page title instead. */
+  const midTitle = cfg.brand ? '' : `<div class="ab-title">${esc(cfg.title || '')}</div>`;
+
+  bar.innerHTML = `<div class="ab-left">${left}</div>
+    <div class="ab-mid">${midTitle}</div>
+    <div class="ab-right">${(cfg.right || []).map(r => iconBtn(r[0], r[1], r[2])).join('')}</div>`;
+
+  /* `pin` means the screen has no large title, so its compact title should be
+     visible immediately rather than waiting for a scroll that may never come. */
+  bar.classList.toggle('always-title', !!cfg.pin);
+  bar.classList.remove('scrolled');
+  attachBarScroll(id);
+}
+
+/* The bar reacts to the ACTIVE screen's scroll position — each screen is its
+   own scroll container, so the listener has to move with it. */
+let barScrollEl = null, barScrollFn = null;
+function attachBarScroll(id) {
+  if (barScrollEl && barScrollFn) barScrollEl.removeEventListener('scroll', barScrollFn);
+  const el = document.getElementById('s-' + id);
+  if (!el) return;
+  const bar = document.getElementById('appbar');
+  barScrollFn = () => bar.classList.toggle('scrolled', el.scrollTop > 18);
+  barScrollEl = el;
+  el.addEventListener('scroll', barScrollFn, { passive: true });
+  barScrollFn();
+}
+
 function renderNav() {
   document.getElementById('nav').innerHTML = navItems().map(t => t.scan
     ? `<button class="tab tab-scan" onclick="startScan()">
@@ -1063,6 +1156,7 @@ function go(id, opts = {}) {
 
   document.getElementById('nav').classList.toggle('show', TAB_SCREENS.includes(id));
   syncNavActive(id);
+  renderAppbar(id);
 
   if (id === 'home')      renderHome();
   if (id === 'inventory') renderInventory();
@@ -1199,7 +1293,6 @@ async function loadPlans() {
 
 async function renderPlans() {
   hideErr('planErr');
-  document.getElementById('planBack').style.display = navStack.length ? '' : 'none';
   if (!PLANS.length) await loadPlans();
 
   document.getElementById('planList').innerHTML = PLANS.map(p => {
@@ -2031,7 +2124,8 @@ function deleteItem() {
 /* ═════════════════════════════ HOME ═════════════════════════════ */
 function renderHome() {
   const h = new Date().getHours();
-  document.getElementById('homeGreet').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('homeGreet').textContent =
+    h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 
   document.getElementById('trendRail').innerHTML = TRENDS.map(t =>
     imgTile(t, '', `<span class="cap">${t.name}<span class="s">${t.sub}</span></span>`)).join('');
