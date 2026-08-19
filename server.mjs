@@ -896,7 +896,7 @@ server.listen(PORT, () => {
   } else {
     accounts.verifyMailLogin().then(v => {
       if (v.ok) console.log('  ✓ Mail login verified\n');
-      else console.error(`\n  ✗ Mail login FAILED: ${v.reason}\n    Check /api/auth/diagnose\n`);
-    }).catch(e => console.error('  ✗ Mail check error:', e.message));
+      else console.error(`\n  ✗ Mail login FAILED: ${v.reason || 'no reason reported'}\n    Check /api/auth/diagnose\n`);
+    }).catch(e => console.error('  ✗ Mail check error:', accounts.errText(e)));
   }
 });
