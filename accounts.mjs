@@ -19,7 +19,7 @@
 
 import crypto from 'node:crypto';
 import * as store from './store.mjs';
-import { sendCode as mailCode, mailProvider, mailFrom, verifyMailLogin } from './mailer.mjs';
+import { sendCode as mailCode, mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp } from './mailer.mjs';
 
 /* ═════════════════════════════════ plans ═════════════════════════════════ */
 
@@ -90,7 +90,7 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 export const billingConfigured = () => !!(STRIPE_SECRET && PRICE_IDS.starter && PRICE_IDS.pro);
 export const mailConfigured    = () => mailProvider() !== 'none';
-export { mailProvider, mailFrom, verifyMailLogin };
+export { mailProvider, mailFrom, verifyMailLogin, providerUsesSmtp };
 
 /* ═════════════════════════════ session tokens ════════════════════════════ */
 /* Stateless and signed: <base64url payload>.<hmac>. No session table needed,
@@ -268,7 +268,7 @@ export async function requestCode(req, res) {
     if (IS_PROD) {
       return res.status(503).json({
         code: 'nomail',
-        error: 'Sign-in email is not set up on this server yet. Add GMAIL_USER and GMAIL_APP_PASSWORD — see SETUP-BILLING.md.'
+        error: 'Sign-in email is not set up on this server yet. Add BREVO_API_KEY (or RESEND_API_KEY) — see SETUP-BILLING.md.'
       });
     }
     return res.json({ ok: true, mailConfigured: false, devCode: code });
