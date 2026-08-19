@@ -42,21 +42,44 @@ function connect(timeoutMs) {
       { host, port: SMTP_PORT(), servername: host,
         rejectUnauthorized: !SMTP_INSECURE() },
       () => resolve(s));
-    s.setTimeout(timeoutMs, () => { s.destroy(); reject(new Error(`Timed out connecting to ${host}.`)); });
+    s.setTimeout(timeoutMs, () => {
+      s.destroy();
+      reject(new Error(
+        `Timed out connecting to ${host}:${SMTP_PORT()}. If this is running on Render's free tier, `
+        + 'that is expected — free instances block outbound SMTP ports (25, 465, 587). '
+        + 'Use BREVO_API_KEY or RESEND_API_KEY instead, which send over HTTPS.'
+      ));
+    });
     s.once('error', reject);
   });
 }
 
+const BREVO_KEY = () => (process.env.BREVO_API_KEY || '').trim();
+
 export function mailProvider() {
   if (GMAIL_USER() && GMAIL_PASS()) return 'gmail';
+  if (BREVO_KEY()) return 'brevo';
   if (RESEND_KEY()) return 'resend';
   return 'none';
 }
 
+/* Gmail needs a raw SMTP socket. Brevo and Resend are plain HTTPS on 443.
+   That distinction decides whether a host can send mail at all: Render's free
+   tier blocks outbound 25/465/587, so SMTP times out there no matter how
+   correct the credentials are. */
+export const providerUsesSmtp = () => mailProvider() === 'gmail';
+
 export function mailFrom() {
   if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
   if (mailProvider() === 'gmail') return `Resell.AI <${GMAIL_USER()}>`;
+  if (mailProvider() === 'brevo') return 'Resell.AI <no-reply@example.com>';
   return 'Resell.AI <onboarding@resend.dev>';
+}
+
+/* Split "Name <a@b.c>" into its parts — Brevo wants them as separate fields. */
+function splitAddr(a) {
+  const m = String(a).match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1] || 'Resell.AI', email: m[2].trim() } : { name: 'Resell.AI', email: String(a).trim() };
 }
 
 /* ───────────────────────────── SMTP plumbing ───────────────────────────── */
@@ -189,6 +212,24 @@ async function sendViaGmail({ to, subject, text, html }) {
   }
 }
 
+async function sendViaBrevo({ to, subject, text, html }) {
+  const sender = splitAddr(mailFrom());
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': BREVO_KEY(), 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ sender, to: [{ email: to }], subject, textContent: text, htmlContent: html })
+  });
+  if (!r.ok) {
+    const body = await r.text().catch(() => '');
+    if (r.status === 400 && /sender/i.test(body)) {
+      throw new Error('Brevo rejected the sender address. Verify it under Senders & IP in the Brevo dashboard, '
+                    + 'then set MAIL_FROM to that exact address.');
+    }
+    throw new Error(`Brevo rejected the message (${r.status}): ${body.slice(0, 200)}`);
+  }
+  return { delivered: true, provider: 'brevo' };
+}
+
 async function sendViaResend({ to, subject, text, html }) {
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -226,6 +267,7 @@ export async function sendCode(to, code) {
 
   const provider = mailProvider();
   if (provider === 'gmail')  return sendViaGmail({ to, subject, text, html });
+  if (provider === 'brevo')  return sendViaBrevo({ to, subject, text, html });
   if (provider === 'resend') return sendViaResend({ to, subject, text, html });
 
   console.log(`\n  ✉  [no mail provider configured] code for ${to}: ${code}\n`);
@@ -235,8 +277,22 @@ export async function sendCode(to, code) {
 /* Used by the startup banner and the diagnose endpoint. Proves the credentials
    authenticate without actually sending anything to a real person. */
 export async function verifyMailLogin() {
-  if (mailProvider() !== 'gmail') return { ok: false, reason: `provider is "${mailProvider()}"` };
-  const sock = await connect(15_000);
+  const provider = mailProvider();
+  if (provider === 'none') return { ok: false, reason: 'no mail provider configured' };
+  /* HTTP providers have no login step to verify up front; a bad key surfaces
+     on the first send with a specific message. */
+  if (provider !== 'gmail') return { ok: true, reason: `${provider} uses HTTPS — nothing to pre-verify` };
+
+  let sock;
+  try {
+    sock = await connect(15_000);
+  } catch (e) {
+    /* This used to sit outside the try. When the connection failed — which is
+       guaranteed on a host that blocks SMTP — the rejection escaped, and any
+       caller without its own catch took the whole process down with it. */
+    return { ok: false, reason: e.message };
+  }
+
   try {
     await cmd(sock, null, [220], 15_000);
     await cmd(sock, 'EHLO resell.ai', [250], 15_000);
@@ -250,4 +306,3 @@ export async function verifyMailLogin() {
     sock.destroy();
   }
 }
-
