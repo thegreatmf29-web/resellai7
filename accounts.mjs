@@ -19,6 +19,7 @@
 
 import crypto from 'node:crypto';
 import * as store from './store.mjs';
+import { sendCode as mailCode, mailProvider, mailFrom, verifyMailLogin } from './mailer.mjs';
 
 /* ═════════════════════════════════ plans ═════════════════════════════════ */
 
@@ -85,12 +86,11 @@ const STRIPE_WEBHOOK = process.env.STRIPE_WEBHOOK_SECRET || '';
 const PRICE_IDS = { starter: process.env.STRIPE_PRICE_STARTER || '', pro: process.env.STRIPE_PRICE_PRO || '' };
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
 
-const RESEND_KEY = process.env.RESEND_API_KEY || '';
-const MAIL_FROM  = process.env.MAIL_FROM || 'Resell.AI <onboarding@resend.dev>';
-const IS_PROD    = process.env.NODE_ENV === 'production';
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 export const billingConfigured = () => !!(STRIPE_SECRET && PRICE_IDS.starter && PRICE_IDS.pro);
-export const mailConfigured    = () => !!RESEND_KEY;
+export const mailConfigured    = () => mailProvider() !== 'none';
+export { mailProvider, mailFrom, verifyMailLogin };
 
 /* ═════════════════════════════ session tokens ════════════════════════════ */
 /* Stateless and signed: <base64url payload>.<hmac>. No session table needed,
@@ -238,27 +238,6 @@ export async function checkListingAllowed(req) {
   return { ok: true, user, quota: quotaOf(user) };
 }
 
-/* ════════════════════════════════ email ═════════════════════════════════ */
-
-async function sendMail(to, subject, text) {
-  if (!RESEND_KEY) {
-    // No mail provider yet: print it so local development still works.
-    console.log(`\n  ✉  [no mail provider configured] code for ${to}:\n     ${text}\n`);
-    return { delivered: false };
-  }
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${RESEND_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: MAIL_FROM, to, subject, text })
-  });
-  if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    console.error('mail send failed:', r.status, body.slice(0, 300));
-    throw new Error('Could not send the code. Try again in a moment.');
-  }
-  return { delivered: true };
-}
-
 /* ═════════════════════════════ auth handlers ════════════════════════════ */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
@@ -280,21 +259,29 @@ export async function requestCode(req, res) {
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   await store.putCode(email, hashCode(email, code), Date.now() + 10 * 60 * 1000);
 
+  /* With no mail provider there is no way for the code to reach anyone. In
+     development we hand it back so local setup is possible. In production we
+     say so plainly — the old behaviour was to return ok:true and leave the
+     user staring at a code screen for an email that was never sent. */
+  if (!mailConfigured()) {
+    console.log(`\n  ✉  [no mail provider] code for ${email}: ${code}\n`);
+    if (IS_PROD) {
+      return res.status(503).json({
+        code: 'nomail',
+        error: 'Sign-in email is not set up on this server yet. Add GMAIL_USER and GMAIL_APP_PASSWORD — see SETUP-BILLING.md.'
+      });
+    }
+    return res.json({ ok: true, mailConfigured: false, devCode: code });
+  }
+
   try {
-    await sendMail(
-      email,
-      `${code} is your Resell.AI code`,
-      `Your Resell.AI sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for this, ignore this email.`
-    );
+    await mailCode(email, code);
   } catch (e) {
+    console.error('mail send failed:', e.message);
     return res.status(502).json({ error: e.message });
   }
 
-  const out = { ok: true, mailConfigured: mailConfigured() };
-  // Without a mail provider there is no way to receive the code, so in that
-  // one case return it directly — otherwise local setup is impossible.
-  if (!mailConfigured() && !IS_PROD) out.devCode = code;
-  res.json(out);
+  res.json({ ok: true, mailConfigured: true });
 }
 
 export async function verifyCode(req, res) {
