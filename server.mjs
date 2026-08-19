@@ -814,6 +814,7 @@ app.get ('/api/plans',            (_req, res) => res.json(accounts.plansPayload(
    things are configured and what the server got back — never the credentials
    themselves, so this is safe to open in a browser. */
 app.get('/api/auth/diagnose', async (_req, res) => {
+ try {
   const out = {
     provider: accounts.mailProvider(),
     from: accounts.mailFrom(),
@@ -827,12 +828,20 @@ app.get('/api/auth/diagnose', async (_req, res) => {
   if (out.gmailPasswordSet && out.gmailPasswordLength !== 16) {
     out.warning = `App Password is ${out.gmailPasswordLength} characters — Google's are 16. This looks like the wrong password.`;
   }
-  if (out.provider === 'gmail') {
-    const v = await accounts.verifyMailLogin();
-    out.loginOk = v.ok;
-    if (!v.ok) out.loginError = v.reason;
+  out.usesSmtp = accounts.providerUsesSmtp();
+  if (out.usesSmtp) {
+    out.note = 'SMTP providers do not work on hosts that block outbound ports 25/465/587 '
+             + "(Render's free tier does). If the login below times out, that is why.";
   }
+
+  const v = await accounts.verifyMailLogin();
+  out.loginOk = v.ok;
+  if (!v.ok) out.loginError = v.reason;
+
   res.json(out);
+ } catch (e) {
+  res.status(500).json({ error: e.message });
+ }
 });
 app.post('/api/auth/request',     accounts.requestCode);
 app.post('/api/auth/verify',      accounts.verifyCode);
@@ -888,6 +897,6 @@ server.listen(PORT, () => {
     accounts.verifyMailLogin().then(v => {
       if (v.ok) console.log('  ✓ Mail login verified\n');
       else console.error(`\n  ✗ Mail login FAILED: ${v.reason}\n    Check /api/auth/diagnose\n`);
-    }).catch(() => {});
+    }).catch(e => console.error('  ✗ Mail check error:', e.message));
   }
 });
